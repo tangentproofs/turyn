@@ -1,5 +1,6 @@
 import { highlight, linkMap } from "./lean.js";
 import { mountWidget } from "./widgets.js";
+import { isCorrect, sanitizeProgress, looksLikeProgress } from "./quiz.js";
 
 const REPO = "tangentproofs/turyn";
 const BLOB = `https://github.com/${REPO}/blob/main`;
@@ -28,13 +29,15 @@ const [decls, nodes] = await Promise.all([
 ]);
 const byId = new Map(decls.map((d) => [d.id, d]));
 const reachable = decls.filter((d) => d.depth !== null);
+// Everything a declaration's statement mentions, transitively (computed, so prose never drifts from the graph).
+const meaningClosure = (id) => { const seen = new Set(), st = [id]; while (st.length) for (const x of byId.get(st.pop())?.meaningDeps || []) if (!seen.has(x)) { seen.add(x); st.push(x); } return seen; };
 const fileCount = new Set(decls.map((d) => d.file)).size;
 
 // ------------------------------------------------------------------ progress
 // localStorage schema v1: { v: 1, nodes: { [id]: { viewed?, quizPassed?, signedOff?, answers? } } }
 const KEY = "turyn-progress-v1";
-let P = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || { v: 1, nodes: {} }; } catch { return { v: 1, nodes: {} }; } })();
-const save = () => localStorage.setItem(KEY, JSON.stringify(P));
+let P = (() => { try { return sanitizeProgress(JSON.parse(localStorage.getItem(KEY))); } catch { return { v: 1, nodes: {} }; } })();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch { /* storage full or disabled: keep in memory */ } };
 const rec = (id) => (P.nodes[id] ??= {});
 
 // signed: sign-off recorded AND the node's quiz passed (stubs have no quiz, so cannot be signed).
@@ -119,7 +122,7 @@ function graphPage() {
           <div>Everything the headline results use: <b>${cov.n}</b> / ${cov.total} declarations understood</div>
           <div class="progress-bar"><div style="width:${(100 * cov.n) / cov.total}%"></div></div>
           <ul class="small headlines">${HEADLINES.map((h) => `<li><span class="sw" style="background:${COLORS[status(h)]}"></span><a href="#/node/${encodeURIComponent(h)}">${esc(h)}</a></li>`).join("")}</ul>
-          <p class="small muted">${understood(MAIN) ? "You understand the <b>statement</b> that every TT(n) gives a Hadamard matrix." : `To understand <a href="#/node/${MAIN}">tt_implies_hadamard</a>, sign off on it and on everything its statement mentions (eight further declarations).`}</p>
+          <p class="small muted">${understood(MAIN) ? "You understand the <b>statement</b> that every TT(n) gives a Hadamard matrix." : `To understand <a href="#/node/${MAIN}">tt_implies_hadamard</a>, sign off on it and on everything its statement mentions (${meaningClosure(MAIN).size} further declarations).`}</p>
         </div>
         <div class="panel legend">
           <h3>Legend</h3>
@@ -161,7 +164,7 @@ function wireProgressButtons() {
   };
   document.getElementById("import").onclick = () => {
     const i = document.createElement("input"); i.type = "file"; i.accept = ".json";
-    i.onchange = async () => { try { P = JSON.parse(await i.files[0].text()); save(); route(); } catch (e) { alert("Could not read: " + e.message); } };
+    i.onchange = async () => { try { const raw = JSON.parse(await i.files[0].text()); if (!looksLikeProgress(raw)) throw new Error("not a progress file (expected {\"v\": 1, \"nodes\": {…}})"); P = sanitizeProgress(raw); save(); route(); } catch (e) { alert("Could not read: " + e.message); } };
     i.click();
   };
   document.getElementById("reset").onclick = () => { if (confirm("Forget all sign-offs and quiz results in this browser?")) { P = { v: 1, nodes: {} }; save(); route(); } };
@@ -336,7 +339,6 @@ function nodePage(id) {
   nodePage.pending = pendingDeps;
 }
 
-const norm = (s) => String(s).toLowerCase().replace(/\s+/g, "").replace(/[`'"]/g, "");
 function renderQuiz(id, n) {
   const qz = document.getElementById("quiz");
   const r = rec(id);
@@ -353,10 +355,10 @@ function renderQuiz(id, n) {
     n.quiz.forEach((q, i) => {
       const box = qz.querySelector(`.q[data-i="${i}"]`);
       let ok = false, given;
-      if (q.type === "choice") { const s = box.querySelector("input:checked"); given = s ? +s.value : null; ok = given === q.answer; }
+      if (q.type === "choice") { const s = box.querySelector("input:checked"); given = s ? +s.value : null; ok = isCorrect(q, given); }
       else {
         given = box.querySelector("input").value;
-        ok = q.type === "number" ? given.trim() !== "" && Number(given) === q.answer : q.answer.some((a) => norm(a) === norm(given));
+        ok = isCorrect(q, given);
       }
       ans[i] = given;
       if (given === null || given === "") { box.classList.remove("answered"); box.querySelector(".verdict").innerHTML = ""; return; }

@@ -46,6 +46,13 @@ for (const f of fs.readdirSync(path.join(SITE, "nodes")).filter((f) => f.endsWit
       if (!Array.isArray(q.answer)) err(f, `${where}: text question needs a list of accepted answers`);
     }
   });
+  // Every in-site link must resolve to a declaration (dead #/node/... links were not caught before).
+  const texts = [body, fm.summary, ...(fm.caveats || []), ...fm.quiz.flatMap((q) => [q.q, q.explain, ...(q.choices || [])])];
+  for (const t of texts) for (const [, target] of String(t).matchAll(/\(#\/node\/([^)\s]+)\)/g))
+    if (!byId.has(decodeURIComponent(target))) err(f, `link to unknown declaration '#/node/${target}'`);
+  fm.quiz.forEach((q, i) => {
+    if (q.choices && new Set(q.choices.map((c) => c.trim())).size !== q.choices.length) err(f, `quiz[${i}]: duplicate choices`);
+  });
   const md = (s) => marked.parse(s);
   const mdInline = (s) => marked.parseInline(s);
   nodes[fm.id] = {
