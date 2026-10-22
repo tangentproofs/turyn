@@ -5,3 +5,7 @@ lean/.lake/
 aristotle-key.sh
 .claude/
 aristotle-staging/
+
+# informalization site
+site/node_modules/
+site/dist/
