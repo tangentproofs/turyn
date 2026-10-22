@@ -7,6 +7,17 @@ const GISCUS = { repo: REPO, repoId: "R_kgDORx30Hw", category: "Announcements", 
 const MATHLIB_DOCS = (n) => `https://leanprover-community.github.io/mathlib4_docs/find/?pattern=${encodeURIComponent(n)}#doc`;
 const MAIN = "Result.tt_implies_hadamard";
 // The headline results: depth in decls.json is measured from all of them.
+// The spine: the headline results and the declarations their statements and main proofs turn on.
+// (All 130+ explained nodes are one click away under "Explained".)
+const SPINE = ["Result.tt_implies_hadamard", "hadamard_428_exists", "kharaghani_2005_tt36", "tt6_valid", "tt6_hadamard",
+  "tt6_hadamard_isHadamard", "energy_identity", "Result.xy_interior_antipalindrome", "canonical_representative_exists",
+  "PmSeq", "AllPmOne", "lookupNat", "aperiodicAutocorr", "combinedAutocorr", "IsTurynType", "TurynType", "IntMat",
+  "IsHadamardMat", "hadamardOrder", "seqSum", "totalAutocorr", "sum_sq_eq_len_add_two_totalAutocorr",
+  "turyn_vanishing_total", "weightedTotalAutocorr_decompose", "IsTurynType.toTyped", "step2", "TSequence",
+  "periodicAutocorr", "tseqCombine_periodic_identity", "gsDataOfTSequence", "gsMatrix", "circulant",
+  "typedGsMatrix_isHadamard", "turynToHadamardMatrix", "turynToHadamardMatrix_isHadamard", "ofIsTurynTypeMatrix",
+  "ofIsTurynTypeMatrix_isHadamard", "uAt", "Canonical1", "Canonical", "Equivalent", "Elementary", "xy_product_law",
+  "step1", "BaseSeqData"];
 const HEADLINES = ["Result.tt_implies_hadamard", "hadamard_428_exists", "tt6_hadamard_isHadamard", "energy_identity", "Result.xy_interior_antipalindrome", "canonical_representative_exists"];
 const app = document.getElementById("app");
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -80,7 +91,8 @@ let graphView = "spine";
 function graphPage() {
   app.className = "wide";
   const cov = proofCoverage();
-  const spine = Object.keys(nodes);
+  const spine = SPINE.filter((id) => byId.has(id));
+  const explained = Object.keys(nodes);
   const spineDone = spine.filter((id) => understood(id)).length;
   app.innerHTML = `
     <div class="graph-wrap">
@@ -90,6 +102,7 @@ function graphPage() {
         The job here is the other direction, and <b>you</b> are the checker: a node turns green when you've signed off on its formal statement <i>and</i> on everything its statement mentions, just as Lean won't accept a statement whose ingredients it doesn't know. <a href="#/trust">What was checked, and how much to trust it →</a></p>
         <div class="toolbar">
           <button data-v="spine">Explained spine (${spine.length})</button>
+          <button data-v="explained">Explained (${explained.length})</button>
           <button data-v="neighborhood">Spine + direct deps</button>
           <button data-v="files">Files (${fileCount})</button>
           <button data-v="all">All declarations (${decls.length})</button>
@@ -101,7 +114,7 @@ function graphPage() {
       <aside id="side">
         <div class="panel">
           <h3>Your progress</h3>
-          <div>Spine: <b>${spineDone}</b> / ${spine.length} understood</div>
+          <div>Spine: <b>${spineDone}</b> / ${spine.length} understood <span class="small muted">(${explained.length} nodes explained in all)</span></div>
           <div class="progress-bar"><div style="width:${spine.length ? (100 * spineDone) / spine.length : 0}%"></div></div>
           <div>Everything the headline results use: <b>${cov.n}</b> / ${cov.total} declarations understood</div>
           <div class="progress-bar"><div style="width:${(100 * cov.n) / cov.total}%"></div></div>
@@ -111,7 +124,7 @@ function graphPage() {
         <div class="panel legend">
           <h3>Legend</h3>
           ${Object.entries(STATUS_LABEL).map(([k, v]) => `<div><span class="sw" style="background:${COLORS[k]}"></span>${v}</div>`).join("")}
-          <div><span class="sw" style="background:transparent;border:2px solid #f92672"></span>the main theorem</div>
+          <div><span class="sw" style="background:transparent;border:2px solid #f92672"></span>a headline result</div>
         </div>
         <div class="panel small">
           <h3>Start here</h3>
@@ -179,10 +192,12 @@ function drawGraph(view) {
       if (a !== b && !seen.has(a + ">" + b)) { seen.add(a + ">" + b); els.push({ data: { id: `e:${a}>${b}`, source: "m:" + a, target: "m:" + b, kind: "p" } }); }
     }
   } else {
-    if (view === "spine") ids = new Set(Object.keys(nodes));
+    const spineIds = SPINE.filter((id) => byId.has(id));
+    if (view === "spine") ids = new Set(spineIds);
+    else if (view === "explained") ids = new Set(Object.keys(nodes));
     else if (view === "neighborhood") {
-      ids = new Set(Object.keys(nodes));
-      for (const id of Object.keys(nodes)) for (const x of [...byId.get(id).meaningDeps, ...byId.get(id).proofDeps]) ids.add(x);
+      ids = new Set(spineIds);
+      for (const id of spineIds) for (const x of [...byId.get(id).meaningDeps, ...byId.get(id).proofDeps]) ids.add(x);
     } else ids = new Set(decls.map((d) => d.id));
     for (const id of ids) {
       const d = byId.get(id), st = status(id);
