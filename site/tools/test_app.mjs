@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { isCorrect, normText, parseNumber, sanitizeProgress, looksLikeProgress } from "../assets/quiz.js";
+import { migrateProgress, ownStatus } from "../assets/progress.js";
 
 const SITE = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const REPO = path.dirname(SITE);
@@ -37,6 +38,10 @@ group("progress import", () => {
   eq(sanitizeProgress({ v: 1, nodes: [] }), { v: 1, nodes: {} });
   eq(sanitizeProgress({ v: 1, nodes: { a: { viewed: 1, quizPassed: "x", junk: 2 }, b: 5 } }), { v: 1, nodes: { a: { viewed: 1 } } });
   ok(!looksLikeProgress({ foo: 1 })); ok(!looksLikeProgress([])); ok(looksLikeProgress({ v: 1, nodes: {} }));
+  ok(looksLikeProgress({ v: 2, nodes: {} }), "v2 progress files import"); ok(!looksLikeProgress({ v: 3, nodes: {} }));
+  eq(sanitizeProgress({ v: 2, nodes: { a: { signedOff: 4 } } }), { v: 2, nodes: { a: { signedOff: 4 } } }, "v2 kept, so its sign-off is not migrated");
+  const v1 = migrateProgress(sanitizeProgress({ v: 1, nodes: { a: { signedOff: 4 }, b: { quizPassed: 3 } } }));
+  eq([v1.v, ownStatus(v1.nodes.a, true), ownStatus(v1.nodes.b, true)], [2, "both", "quiz"], "stored v1 sign-off → both after load");
 });
 
 const decls = JSON.parse(fs.readFileSync(path.join(SITE, "data/decls.json"), "utf8"));

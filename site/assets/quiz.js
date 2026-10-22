@@ -25,9 +25,10 @@ export function isCorrect(q, given) {
   return (q.answer || []).some((a) => normText(a) === normText(given));
 }
 
-/** Validate an imported / stored progress object; returns a clean v1 object (never throws). */
+/** Validate an imported / stored progress object; returns a clean object that keeps its schema
+ *  version (1 or 2; anything else counts as 1) and never throws. Run migrateProgress (progress.js) after. */
 export function sanitizeProgress(p) {
-  const out = { v: 1, nodes: {} };
+  const out = { v: p && p.v === 2 ? 2 : 1, nodes: {} };
   if (!p || typeof p !== "object" || typeof p.nodes !== "object" || p.nodes === null || Array.isArray(p.nodes)) return out;
   for (const [id, r] of Object.entries(p.nodes)) {
     if (!r || typeof r !== "object" || Array.isArray(r)) continue;
@@ -39,4 +40,4 @@ export function sanitizeProgress(p) {
   return out;
 }
 /** True when `p` looks like a progress file at all (used to reject unrelated JSON on import). */
-export const looksLikeProgress = (p) => !!p && typeof p === "object" && p.v === 1 && typeof p.nodes === "object" && p.nodes !== null && !Array.isArray(p.nodes);
+export const looksLikeProgress = (p) => !!p && typeof p === "object" && (p.v === 1 || p.v === 2) && typeof p.nodes === "object" && p.nodes !== null && !Array.isArray(p.nodes);

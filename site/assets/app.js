@@ -1,5 +1,6 @@
 import { highlight, linkMap } from "./lean.js";
 import { mountWidget } from "./widgets.js";
+import { migrateProgress, emptyProgress, ownStatus, makeUnderstood, STATUS_ORDER, STATUS_LABEL, COLORS, PENDING_COLOR } from "./progress.js";
 import { isCorrect, sanitizeProgress, looksLikeProgress } from "./quiz.js";
 
 const REPO = "tangentproofs/turyn";
@@ -34,35 +35,23 @@ const meaningClosure = (id) => { const seen = new Set(), st = [id]; while (st.le
 const fileCount = new Set(decls.map((d) => d.file)).size;
 
 // ------------------------------------------------------------------ progress
-// localStorage schema v1: { v: 1, nodes: { [id]: { viewed?, quizPassed?, signedOff?, answers? } } }
+// localStorage schema v2 (see assets/progress.js): { v: 2, nodes: { [id]: { viewed?, quizPassed?, signedOff?, answers? } } }.
+// The key keeps its old "-v1" name; v1 data is migrated on load and on import.
 const KEY = "turyn-progress-v1";
-let P = (() => { try { return sanitizeProgress(JSON.parse(localStorage.getItem(KEY))); } catch { return { v: 1, nodes: {} }; } })();
+let P = (() => { try { return migrateProgress(sanitizeProgress(JSON.parse(localStorage.getItem(KEY)))); } catch { return emptyProgress(); } })();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch { /* storage full or disabled: keep in memory */ } };
 const rec = (id) => (P.nodes[id] ??= {});
 
-// signed: sign-off recorded AND the node's quiz passed (stubs have no quiz, so cannot be signed).
-const signed = (id) => !!(nodes[id] && P.nodes[id]?.signedOff && P.nodes[id]?.quizPassed);
+// signed: the reader ticked "I understand" (no longer gated by the quiz). Stubs have no explainer, so cannot be signed.
+const signed = (id) => !!(nodes[id] && P.nodes[id]?.signedOff);
 // understood: signed AND every meaning-dependency understood (Mathlib is taken as given).
-const memo = new Map();
-function understood(id, stack = new Set()) {
-  if (memo.has(id)) return memo.get(id);
-  if (stack.has(id)) return false;
-  stack.add(id);
-  const r = signed(id) && byId.get(id).meaningDeps.every((d) => understood(d, stack));
-  stack.delete(id);
-  memo.set(id, r);
-  return r;
-}
-function status(id) {
-  if (understood(id)) return "understood";
-  if (signed(id)) return "signed";
-  if (P.nodes[id]?.quizPassed) return "quiz";
-  if (nodes[id]) return "explained";
-  return "stub";
-}
-const STATUS_LABEL = { understood: "understood", signed: "signed off (deps pending)", quiz: "quiz passed", explained: "has explainer", stub: "needs explainer" };
-const COLORS = { understood: "#a6e22e", signed: "#c3e88d", quiz: "#e6db74", explained: "#66d9ef", stub: "#75715e" };
-function refresh() { memo.clear(); }
+const understood = makeUnderstood(signed, (id) => byId.get(id)?.meaningDeps);
+// status: the node's own state, shown as three greens: signed (lightest), quiz (middle), both (darkest).
+const status = (id) => ownStatus(P.nodes[id], !!nodes[id]);
+// depsPending: marked understood, but something its statement mentions isn't understood yet.
+const depsPending = (id) => signed(id) && !understood(id);
+const statusLabel = (id) => STATUS_LABEL[status(id)] + (depsPending(id) ? " · mentions pending" : "");
+function refresh() { understood.clear(); }
 
 // The proof is understood when the theorem is, and every declaration its proof uses is too.
 function proofCoverage() {
@@ -102,7 +91,7 @@ function graphPage() {
       <div>
         <h1>Turyn-type sequences and Hadamard matrices, in Lean, read back into English</h1>
         <p class="muted">The Lean library in <a href="https://github.com/${REPO}/tree/main/lean" target="_blank" rel="noopener"><code>lean/</code></a> proves that any Turyn-type quadruple TT(<i>n</i>) yields an explicit Hadamard matrix of order 4(3<i>n</i> − 1), and machine-checks two concrete quadruples, TT(6) and Kharaghani and Tayfeh-Rezaie's TT(36) (order 428).
-        The job here is the other direction, and <b>you</b> are the checker: a node turns green when you've signed off on its formal statement <i>and</i> on everything its statement mentions, just as Lean won't accept a statement whose ingredients it doesn't know. <a href="#/trust">What was checked, and how much to trust it →</a></p>
+        The job here is the other direction, and <b>you</b> are the checker: a node turns green when you tick <b>I understand</b> (lightest), pass its quiz (middle) or do both (darkest), and it counts as understood once everything its statement mentions is too, just as Lean won't accept a statement whose ingredients it doesn't know. <a href="#/trust">What was checked, and how much to trust it →</a></p>
         <div class="toolbar">
           <button data-v="spine">Explained spine (${spine.length})</button>
           <button data-v="explained">Explained (${explained.length})</button>
@@ -126,7 +115,8 @@ function graphPage() {
         </div>
         <div class="panel legend">
           <h3>Legend</h3>
-          ${Object.entries(STATUS_LABEL).map(([k, v]) => `<div><span class="sw" style="background:${COLORS[k]}"></span>${v}</div>`).join("")}
+          ${STATUS_ORDER.map((k) => `<div><span class="sw" style="background:${COLORS[k]}"></span>${STATUS_LABEL[k]}</div>`).join("")}
+          <div><span class="sw" style="background:transparent;border:2px dashed ${PENDING_COLOR}"></span>marked understood, a mention isn't yet</div>
           <div><span class="sw" style="background:transparent;border:2px solid #f92672"></span>a headline result</div>
         </div>
         <div class="panel small">
@@ -164,10 +154,10 @@ function wireProgressButtons() {
   };
   document.getElementById("import").onclick = () => {
     const i = document.createElement("input"); i.type = "file"; i.accept = ".json";
-    i.onchange = async () => { try { const raw = JSON.parse(await i.files[0].text()); if (!looksLikeProgress(raw)) throw new Error("not a progress file (expected {\"v\": 1, \"nodes\": {…}})"); P = sanitizeProgress(raw); save(); route(); } catch (e) { alert("Could not read: " + e.message); } };
+    i.onchange = async () => { try { const raw = JSON.parse(await i.files[0].text()); if (!looksLikeProgress(raw)) throw new Error("not a progress file (expected {\"v\": 2, \"nodes\": {…}})"); P = migrateProgress(sanitizeProgress(raw)); save(); route(); } catch (e) { alert("Could not read: " + e.message); } };
     i.click();
   };
-  document.getElementById("reset").onclick = () => { if (confirm("Forget all sign-offs and quiz results in this browser?")) { P = { v: 1, nodes: {} }; save(); route(); } };
+  document.getElementById("reset").onclick = () => { if (confirm("Forget all sign-offs and quiz results in this browser?")) { P = emptyProgress(); save(); route(); } };
 }
 
 function drawGraph(view) {
@@ -186,7 +176,7 @@ function drawGraph(view) {
     }
     for (const m of mods) {
       const u = und.get(m) || 0, c = cnt.get(m);
-      const st = u === c ? "understood" : u ? "signed" : expl.get(m) ? "explained" : "stub";
+      const st = u === c ? "both" : u ? "signed" : expl.get(m) ? "explained" : "stub";
       els.push({ data: { id: "m:" + m, label: `${m}\n${u}/${c}`, color: COLORS[st], size: 20 + Math.sqrt(c) * 6, file: m } });
     }
     const seen = new Set();
@@ -204,7 +194,7 @@ function drawGraph(view) {
     } else ids = new Set(decls.map((d) => d.id));
     for (const id of ids) {
       const d = byId.get(id), st = status(id);
-      els.push({ data: { id, label: id.split(".").pop(), color: COLORS[st], size: nodes[id] ? 26 : 12, main: HEADLINES.includes(id) ? 1 : 0, explained: nodes[id] ? 1 : 0 } });
+      els.push({ data: { id, label: id.split(".").pop(), color: COLORS[st], pending: depsPending(id) ? 1 : 0, size: nodes[id] ? 26 : 12, main: HEADLINES.includes(id) ? 1 : 0, explained: nodes[id] ? 1 : 0 } });
     }
     for (const id of ids) {
       const d = byId.get(id);
@@ -220,6 +210,7 @@ function drawGraph(view) {
     style: [
       { selector: "node", style: { "background-color": "data(color)", width: "data(size)", height: "data(size)", label: "data(label)", color: "#f8f8f2", "font-size": view === "all" ? 6 : 10, "text-wrap": "wrap", "text-valign": "bottom", "text-margin-y": 3, "text-outline-color": "#1e1f1c", "text-outline-width": 2 } },
       { selector: "node[explained = 0]", style: { "font-size": view === "all" ? 0 : 7, color: "#a59f85" } },
+      { selector: "node[pending = 1]", style: { "border-width": 3, "border-style": "dashed", "border-color": PENDING_COLOR } },
       { selector: "node[main = 1]", style: { "border-width": 3, "border-color": "#f92672", "font-weight": "bold" } },
       { selector: "edge", style: { width: 1.2, "line-color": "#5c5b4f", "target-arrow-color": "#5c5b4f", "target-arrow-shape": "triangle", "arrow-scale": 0.7, "curve-style": big ? "haystack" : "bezier", opacity: 0.8 } },
       { selector: "edge[kind = 'p']", style: { "line-style": "dashed", opacity: 0.45 } },
@@ -256,7 +247,7 @@ function drawGraph(view) {
 // ------------------------------------------------------------------ node page
 function depLinks(list) {
   if (!list.length) return `<span class="muted small">none in this project</span>`;
-  return list.map((id) => `<a class="st-${status(id)}" href="#/node/${encodeURIComponent(id)}" title="${STATUS_LABEL[status(id)]}">${esc(id)}</a>`).join("");
+  return list.map((id) => `<a class="st-${status(id)}" href="#/node/${encodeURIComponent(id)}" title="${statusLabel(id)}">${esc(id)}</a>`).join("");
 }
 function agentPrompt(d) {
   return `You are writing an informal explainer for one declaration of the Turyn Lean library
@@ -296,7 +287,7 @@ function nodePage(id) {
     <div class="node-head">
       <p class="small"><a href="#/">← graph</a></p>
       <h1>${n ? esc(n.title) : esc(id)}</h1>
-      <div><span class="pill kind-${d.kind}">${d.kind}</span><span class="pill st-${st}">${STATUS_LABEL[st]}</span>${n ? `<span class="pill ${n.review === "draft" ? "draft" : ""}">${n.review}</span>` : ""}
+      <div><span class="pill kind-${d.kind}">${d.kind}</span><span class="pill st-${st}">${statusLabel(id)}</span>${n ? `<span class="pill ${n.review === "draft" ? "draft" : ""}">${n.review}</span>` : ""}
       <span class="name">${esc(d.name)}</span></div>
       ${n ? `<p class="eli5" style="margin:.6rem 0">${n.summaryHtml}</p>` : ""}
     </div>
@@ -381,15 +372,15 @@ function renderSignoff(id) {
   const box = document.getElementById("signoff");
   const r = rec(id), d = byId.get(id);
   const pending = d.meaningDeps.filter((x) => !understood(x));
-  const can = !!r.quizPassed;
-  box.classList.toggle("locked", !can);
+  box.classList.remove("locked");
+  const links = (xs) => xs.map((x) => `<a href="#/node/${encodeURIComponent(x)}">${esc(x)}</a>`).join(", ");
+  const quizNote = r.quizPassed ? "" : ` Passing the quiz above as well turns it <b>dark green</b>.`;
   box.innerHTML = `
-    <label><input type="checkbox" id="so" ${r.signedOff ? "checked" : ""} ${can ? "" : "disabled"}>
+    <label><input type="checkbox" id="so" ${r.signedOff ? "checked" : ""}>
     <b>I understand the formal statement</b> — I could explain what the Lean above says, including its hypotheses, to someone else.</label>
-    <p class="small muted">${can ? "" : "Pass the quiz above to unlock the sign-off. "}
-    ${understood(id) ? `<span class="status-line" style="color:var(--green)">✓ Understood: you've signed off on this and on everything it mentions.</span>`
-      : r.signedOff && can ? `Signed off. It becomes <b>understood</b> once these are understood too: ${pending.map((x) => `<a href="#/node/${encodeURIComponent(x)}">${esc(x)}</a>`).join(", ")}.`
-      : pending.length ? `Mentions still to understand: ${pending.map((x) => `<a href="#/node/${encodeURIComponent(x)}">${esc(x)}</a>`).join(", ")}.` : ""}</p>`;
+    <p class="small muted">${understood(id) ? `<span class="status-line" style="color:var(--both)">✓ Understood: you've marked this and everything it mentions.</span>${quizNote}`
+      : r.signedOff ? `Marked understood. It counts as <b>understood</b> once these are understood too: ${links(pending)}.${quizNote}`
+      : `Tick this whenever you're ready: the quiz is optional, and passing it as well gives the darker green.${pending.length ? ` Mentions still to understand: ${links(pending)}.` : ""}`}</p>`;
   const so = document.getElementById("so");
   if (so) so.onchange = () => { if (so.checked) r.signedOff = Date.now(); else delete r.signedOff; save(); renderSignoff(id); updateHeaderPill(id); };
   updateHeaderPill(id);
@@ -397,7 +388,7 @@ function renderSignoff(id) {
 function updateHeaderPill(id) {
   refresh();
   const p = document.querySelector(".node-head .pill[class*='st-']");
-  if (p) { const st = status(id); p.className = `pill st-${st}`; p.textContent = STATUS_LABEL[st]; }
+  if (p) { const st = status(id); p.className = `pill st-${st}`; p.textContent = statusLabel(id); }
 }
 
 function mountGiscus(id) {
@@ -425,7 +416,7 @@ function listPage(fileFilter) {
     Agents: the work list is <a href="data/needs-explainer.json">data/needs-explainer.json</a>.</p>
     <input type="text" id="flt" placeholder="filter…" style="max-width:20rem">
     <div class="table-wrap"><table class="node-list"><thead><tr><th>declaration</th><th>kind</th><th>status</th><th>distance from the theorem</th><th>file</th></tr></thead>
-    <tbody>${rows.map((d) => `<tr data-id="${esc(d.id.toLowerCase())}"><td><a href="#/node/${encodeURIComponent(d.id)}">${esc(d.id)}</a></td><td><span class="pill kind-${d.kind}">${d.kind}</span></td><td><span class="pill st-${status(d.id)}">${STATUS_LABEL[status(d.id)]}</span></td><td>${d.depth ?? "—"}</td><td class="small muted">${d.module}</td></tr>`).join("")}</tbody></table></div>`;
+    <tbody>${rows.map((d) => `<tr data-id="${esc(d.id.toLowerCase())}"><td><a href="#/node/${encodeURIComponent(d.id)}">${esc(d.id)}</a></td><td><span class="pill kind-${d.kind}">${d.kind}</span></td><td><span class="pill st-${status(d.id)}">${statusLabel(d.id)}</span></td><td>${d.depth ?? "—"}</td><td class="small muted">${d.module}</td></tr>`).join("")}</tbody></table></div>`;
   document.getElementById("flt").oninput = (e) => {
     const v = e.target.value.toLowerCase();
     app.querySelectorAll("tbody tr").forEach((tr) => (tr.style.display = tr.dataset.id.includes(v) ? "" : "none"));
@@ -475,7 +466,7 @@ function aboutPage() {
   <div class="eli5">
   <p>Formalization usually goes from English to Lean: the job is done when Lean accepts the proof. This site goes the
   other way — <b>informalization</b>. The Lean here is finished and builds. The job is done when a <b>reader</b>
-  accepts it: when you can say what each formal statement means and back that up by passing a quiz.</p>
+  accepts it: when you can say what each formal statement means and back that up, if you like, by passing a quiz.</p>
 
   <h2>What is being read</h2>
   <p>The Lean library in this repository's <a href="https://github.com/${REPO}/tree/main/lean" target="_blank" rel="noopener"><code>lean/</code></a>
@@ -507,8 +498,10 @@ function aboutPage() {
   the headline results, extracted from the compiled library.</li>
   <li>A node with an explainer has the verbatim Lean, a plain-English reading, often an interactive illustration,
   and a quiz with an answer key.</li>
-  <li>You can sign off on a node only after passing its quiz. It counts as <b>understood</b> once you've signed off on
-  it <i>and</i> every project declaration its statement mentions is understood. For a definition the body counts as
+  <li>You can tick <b>I understand</b> on a node whenever you like; the quiz is optional. A node's colour shows its own
+  progress in three greens: lightest when you've ticked it, middle when you've passed its quiz, darkest when you've done both.
+  It counts as <b>understood</b> once you've ticked it
+  <i>and</i> every project declaration its statement mentions is understood. For a definition the body counts as
   part of the statement, because the body is what it means. For a theorem only the statement counts.</li>
   <li>Mathlib's definitions are taken as given and linked to their documentation.</li>
   </ul>
