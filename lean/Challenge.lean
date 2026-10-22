@@ -28,7 +28,8 @@ The headline statements use the following definitions, all in `Turyn/Defs.lean`:
 1. `tt_implies_hadamard` — *if a TT(n) exists, a Hadamard matrix of order
    `4 (3 n − 1)` exists*. The witness is the constructive base-sequence →
    T-sequence → Goethals–Seidel pipeline.
-2. `xy_interior_antipalindrome` — for a canonical Turyn sequence of length
+2. `xy_interior_antipalindrome` — for an endpoint-normalized (`Canonical1`)
+   Turyn sequence of length
    `n ≥ 4`, the U = X·Y interior is an anti-palindrome:
    `uAt S (n + 1 − k) = − uAt S k` for every `2 ≤ k ≤ n − 1`. This is the
    "XY product law" (discovered by codex).
@@ -45,7 +46,8 @@ theorem tt_implies_hadamard {n : Nat} {X Y Z : PmSeq n} {W : PmSeq (n - 1)}
   sorry
 
 /-- **XY interior anti-palindrome** ("XY product law", discovered by codex).
-For a canonical Turyn sequence of length `n ≥ 4`, the U-sequence
+For an endpoint-normalized (`Canonical1`) Turyn sequence of length `n ≥ 4`,
+the U-sequence
 (`U = X · Y` coordinatewise) is an anti-palindrome on its interior:
 `uAt S (n + 1 − k) = − uAt S k` for every `2 ≤ k ≤ n − 1`. -/
 theorem xy_interior_antipalindrome {n : Nat} (S : TurynType n) (hn : 4 ≤ n)

@@ -22,8 +22,16 @@ Toolchain: `leanprover/lean4:v4.28.0`, Mathlib `v4.28.0`.
 
 ## Proof status
 
-The library is **axiom-free** beyond Lean's three standard axioms
-(`propext`, `Quot.sound`, `Classical.choice`).
+The library adds **no project-specific axioms**. The general theorems
+(`energy_identity`, `tt_implies_hadamard`, `xy_interior_antipalindrome`,
+`canonical_representative_exists`, …) use only Lean's three standard axioms
+(`propext`, `Quot.sound`, `Classical.choice`). The concrete-instance theorems
+proved by `native_decide` (`tt6_valid`, `kharaghani_2005_tt36`, `tt6_energy`,
+`tt6_sums`, `kh05_energy`, `kh05_sums`, `kh05_hadamard_order`, and the examples
+built on them, `hadamard_428_exists` and `tt6_hadamard_isHadamard`) also depend
+on `Lean.ofReduceBool` and `Lean.trustCompiler` (`kh05_hadamard_order` uses
+only those two), i.e. they trust the Lean compiler and its native-code
+evaluation, not just the kernel.
 
 | Theorem | Status | Method |
 |---------|--------|--------|
@@ -152,8 +160,11 @@ combining with the vanishing condition:
 
 ### Hadamard construction (proved end-to-end)
 
-From TT(n), the base-sequence → T-sequence → Goethals–Seidel pipeline produces
-a Hadamard matrix of order `4(3n − 1)`:
+From TT(n), a T-sequence → Goethals–Seidel pipeline produces a Hadamard
+matrix of order `4(3n − 1)`. `step2` builds the T-sequence directly from the
+Turyn quadruple (it folds the classical base-sequence step into one
+construction); the separate base-sequence layer in `Turyn/BaseSequence.lean`
+is not used by this chain.
 
   1. `step2 : TurynType n → TSequence (3n − 1)` (proved support and periodic
      vanishing, see `Turyn/TSequence.lean`).
@@ -162,7 +173,10 @@ a Hadamard matrix of order `4(3n − 1)`:
   3. `turynToHadamardMatrix` and its `*_isHadamard` theorem
      (`Turyn/Hadamard.lean`) compose 1 + 2.
 
-For TT(36), this gives the explicit Hadamard matrix of order 428.
+Applied to the TT(36) of Kharaghani–Tayfeh-Rezaie this yields a Hadamard
+matrix of order 428 via `tt_implies_hadamard`; note that the example theorem
+`hadamard_428_exists` itself only states that the TT(36) is valid and that
+`hadamardOrder 36 = 428`, not that the matrix exists.
 
 ### Canonical representatives (proved)
 
@@ -175,13 +189,17 @@ states that every TT(n) of even length is equivalent to one in canonical form
 
 ## Trust model
 
-- **Fully verified by Lean's kernel.** Every theorem in the library is
-  discharged either by ordinary Lean tactics, by structural / matrix-algebra
-  reasoning, or by `native_decide` (which compiles the Boolean check to native
-  code and certifies the result).
-- **No project-specific axioms.** `lake env lean --print-axioms` on the
-  headline theorems reports only Lean's standard `propext`, `Quot.sound`,
-  and `Classical.choice` — the same set permitted by `comparator-config.json`.
+- **Kernel-checked, except `native_decide`.** Every theorem in the library is
+  discharged by ordinary Lean tactics, by structural / matrix-algebra
+  reasoning, or by `native_decide`. `native_decide` compiles the Boolean check
+  to native code and runs it; the kernel accepts the result via the
+  `Lean.ofReduceBool` axiom, so those theorems also trust the compiler
+  (`Lean.trustCompiler`).
+- **No project-specific axioms.** `#print axioms` on the comparator headline
+  theorems (`tt_implies_hadamard`, `xy_interior_antipalindrome`) reports only
+  Lean's standard `propext`, `Quot.sound`, and `Classical.choice` — the set
+  permitted by `comparator-config.json`. The `native_decide` instance theorems
+  above additionally report `Lean.ofReduceBool` and `Lean.trustCompiler`.
 
 ## Comparator-checkable headline results
 

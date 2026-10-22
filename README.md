@@ -4,7 +4,7 @@ Searches for **Turyn-type sequences** TT(n) — four {+1, -1} sequences
 (X, Y, Z, W) of lengths (n, n, n, n-1) whose combined aperiodic
 autocorrelations vanish at every nonzero shift. These are building blocks
 for constructing Hadamard matrices of order 4(3n-1) via the
-base-sequence → T-sequence → Goethals-Seidel pipeline.
+T-sequence → Goethals-Seidel pipeline (formalized in Lean in `lean/`).
 
 The long-term goal is **TT(56)**, which yields a Hadamard matrix of order 668.
 
