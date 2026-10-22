@@ -103,6 +103,8 @@ def main():
             "typeDeps": sorted({short(x) for x in d["typeDeps"] if x in names}),
             "valueDeps": sorted({short(x) for x in d["valueDeps"] if x in names} -
                                 {short(x) for x in d["typeDeps"]}),
+            # constants used only inside proofs abstracted out of the body (`proof_1`, private lemmas)
+            "proofOnlyDeps": sorted({short(x) for x in d.get("proofOnlyDeps", []) if x in names}),
             "mathlib": [m for m in d["mathlib"] if not BORING.search(m)],
             "extracted": not d.get("synthetic", False),
         })
@@ -111,11 +113,15 @@ def main():
     # theorems: only the constants in the statement (proofs are irrelevant to meaning);
     # defs / inductives / instances: the type AND the body (the body is the meaning).
     for d in out:
+        # Proofs nested inside a def body (abstracted by Lean into `proof_N`) are proof
+        # dependencies, not part of the meaning.
         if d["kind"] == "theorem":
-            d["meaningDeps"], d["proofDeps"] = d["typeDeps"], d["valueDeps"]
+            d["meaningDeps"] = d["typeDeps"]
+            d["proofDeps"] = sorted((set(d["valueDeps"]) | set(d["proofOnlyDeps"])) - set(d["typeDeps"]))
         else:
-            d["meaningDeps"], d["proofDeps"] = sorted(set(d["typeDeps"]) | set(d["valueDeps"])), []
-        del d["typeDeps"], d["valueDeps"]
+            d["meaningDeps"] = sorted(set(d["typeDeps"]) | set(d["valueDeps"]))
+            d["proofDeps"] = sorted(set(d["proofOnlyDeps"]) - set(d["meaningDeps"]))
+        del d["typeDeps"], d["valueDeps"], d["proofOnlyDeps"]
     for d in out:
         d["usedBy"] = []
     for d in out:

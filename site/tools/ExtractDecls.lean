@@ -62,25 +62,58 @@ def extract : CoreM Json := do
     let some m := isProjModule env n | continue
     if isGenerated env n then continue
     let some rng ← findDeclarationRanges? n | continue
-    let collect (e : Expr) : Array Name := Id.run do
+    -- Constants that never get a row of their own — generated auxiliaries such as
+    -- `gsDataOfTSequence.proof_1` / `match_1` / equation lemmas, and `private` lemmas — are
+    -- looked *through*: the project constants THEY use are credited to the declaration that
+    -- uses them. (Without this, e.g. the `gsDataOfTSequence → tseqCombine_periodic_identity`
+    -- edge, which lives inside an auto-generated `proof_1`, was lost.)
+    -- Returns (direct, viaProof): `viaProof` are the constants reached only through a
+    -- generated/private *theorem* (e.g. a `proof_1` abstracted out of a def body). Those are
+    -- proof dependencies even when the outer declaration is a def.
+    let collect (e : Expr) : Array Name × Array Name := Id.run do
       let mut acc : Std.HashSet Name := {}
-      for c in e.getUsedConstants do
+      let mut accP : Std.HashSet Name := {}
+      let mut seen : Std.HashSet (Name × Bool) := {}
+      let mut todo : Array (Name × Bool) := e.getUsedConstants.map (·, false)
+      let mut fuel := 100000
+      while todo.size > 0 do
+        if fuel == 0 then break
+        fuel := fuel - 1
+        let (c, inProof) := todo.back!
+        todo := todo.pop
+        if seen.contains (c, inProof) then continue
+        seen := seen.insert (c, inProof)
+        if (isProjModule env c).isNone then continue
+        let transparent := isGenerated env c || isPrivateName c
+        if transparent then
+          match env.find? c with
+          | some ci' =>
+            let p := inProof || (match ci' with | .thmInfo _ => true | _ => false)
+            todo := todo ++ ci'.type.getUsedConstants.map (·, p)
+            match ci'.value? (allowOpaque := true) with
+            | some v => todo := todo ++ v.getUsedConstants.map (·, p)
+            | none => pure ()
+          | none => pure ()
         let c' := canon env c
-        if c' != n && (isProjModule env c').isSome then acc := acc.insert c'
-      return acc.toArray.qsort (·.toString < ·.toString)
+        if c' != n && (isProjModule env c').isSome && !isPrivateName c' && !isGenerated env c' then
+          if inProof then accP := accP.insert c' else acc := acc.insert c'
+      let srt (h : Std.HashSet Name) := h.toArray.qsort (·.toString < ·.toString)
+      return (srt acc, srt (accP.filter (!acc.contains ·)))
     let ext (e : Expr) : Array Name := Id.run do
       let mut acc : Std.HashSet Name := {}
       for c in e.getUsedConstants do
         let c' := canon env c
         if (isProjModule env c').isNone && !c'.isInternalDetail then acc := acc.insert c'
       return acc.toArray.qsort (·.toString < ·.toString)
-    let tyDeps := collect ci.type
-    let valDeps := match ci.value? (allowOpaque := true) with
-      | some v => collect v | none => #[]
-    let ctorDeps : Array Name := match ci with
-      | .inductInfo i => i.ctors.foldl (fun acc c =>
-          match env.find? c with | some cc => acc ++ collect cc.type | none => acc) #[]
-      | _ => #[]
+    let (tyDeps, tyProof) := collect ci.type
+    let (valDeps, valProof) := match ci.value? (allowOpaque := true) with
+      | some v => collect v | none => (#[], #[])
+    let (ctorDeps, ctorProof) : Array Name × Array Name := match ci with
+      | .inductInfo i => i.ctors.foldl (fun (acc, accP) c =>
+          match env.find? c with
+          | some cc => let (d, p) := collect cc.type; (acc ++ d, accP ++ p)
+          | none => (acc, accP)) (#[], #[])
+      | _ => (#[], #[])
     let isInst := (Meta.instanceExtension.getState env).instanceNames.contains n
     rows := rows.push <| Json.mkObj [
       ("name", Json.str n.toString),
@@ -90,6 +123,7 @@ def extract : CoreM Json := do
       ("endLine", Json.num rng.range.endPos.line),
       ("typeDeps", jsonStrs ((tyDeps ++ ctorDeps).toList.eraseDups.toArray.filter (· != n))),
       ("valueDeps", jsonStrs valDeps),
+      ("proofOnlyDeps", jsonStrs ((tyProof ++ valProof ++ ctorProof).toList.eraseDups.toArray.filter (· != n))),
       ("mathlib", jsonStrs (ext ci.type))]
   return Json.arr rows
 
