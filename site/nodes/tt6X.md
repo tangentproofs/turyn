@@ -18,7 +18,7 @@ quiz:
     explain: "1-indexed position 5 of `----+-` is the `+`. [xAt](#/node/xAt) is `lookupNat S.X.data (5 - 1) = data 4`."
   - q: "What is the type of `tt6X`?"
     type: text
-    answer: ["PmSeq 6", "Turyn.PmSeq 6", "PmSeq (6)", "a PmSeq 6"]
+    answer: ["PmSeq 6", "PmSeq (6)", "a PmSeq 6"]
     explain: "`def tt6X : PmSeq 6 := pm! \"----+-\"`. The length is in the type, so the literal has to have exactly six characters."
 ---
 

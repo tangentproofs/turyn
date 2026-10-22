@@ -20,7 +20,7 @@ quiz:
     explain: "There `c` and `d` are `(x+y)/2` and `(x−y)/2`, and `natAbs_halfSum_add_natAbs_halfDiff_eq_one` says their absolute values add to 1."
   - q: "Which field of [TSequence](#/node/TSequence) does this discharge?"
     type: text
-    answer: ["support", "T.support", "the support field", "support field"]
+    answer: ["support", "(step2 T).support", "the support field", "support field"]
     explain: "`step2` sets `support := step2_support T`."
 ---
 

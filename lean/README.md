@@ -163,8 +163,9 @@ combining with the vanishing condition:
 From TT(n), a T-sequence → Goethals–Seidel pipeline produces a Hadamard
 matrix of order `4(3n − 1)`. `step2` builds the T-sequence directly from the
 Turyn quadruple (it folds the classical base-sequence step into one
-construction); the separate base-sequence layer in `Turyn/BaseSequence.lean`
-is not used by this chain.
+construction); the `step1` / `BaseSeqData` layer in `Turyn/BaseSequence.lean`
+is not used by this chain (`TSequence.lean` imports that file only for generic
+lemmas such as `aperiodicAutocorr_zero_of_ge`).
 
   1. `step2 : TurynType n → TSequence (3n − 1)` (proved support and periodic
      vanishing, see `Turyn/TSequence.lean`).
