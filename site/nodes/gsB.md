@@ -10,7 +10,7 @@ caveats:
 quiz:
   - q: "`gsB G` is which matrix?"
     type: text
-    answer: ["circulant G.x2", "circulant of x2"]
+    answer: ["circulant G.x2", "circulant (G.x2)", "circulant x2", "circulant of x2", "the circulant of G.x2", "Turyn.circulant G.x2"]
     explain: "`def gsB {n : Nat} (G : GSData n) : IntMat n := circulant G.x2`."
   - q: "Does it appear on the diagonal of the array?"
     type: choice

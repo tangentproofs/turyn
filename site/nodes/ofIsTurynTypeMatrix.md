@@ -19,10 +19,11 @@ quiz:
     choices: ["yes", "no — `IsTurynType` is a `Prop`, so there is at most one proof up to proof irrelevance, and the matrix is built from `X, Y, Z, W`"]
     answer: 1
     explain: "`h` is only used to fill the `vanishing` field of `h.toTyped`, which no part of [gsMatrix](#/node/gsMatrix) reads."
-  - q: "Which declaration in the library is an instance of it?"
-    type: text
-    answer: ["tt6_hadamard", "tt6_hadamard "]
-    explain: "`def tt6_hadamard : IntMat 68 := ofIsTurynTypeMatrix tt6_valid`."
+  - q: "`ofIsTurynTypeMatrix` returns a matrix. Which of these declarations is therefore a use of it?"
+    type: choice
+    choices: ["`tt6_valid : IsTurynType tt6X tt6Y tt6Z tt6W`", "`tt6_hadamard : IntMat 68`", "`tt6_hadamard_isHadamard : IsHadamardMat tt6_hadamard`"]
+    answer: 1
+    explain: "`def tt6_hadamard : IntMat 68 := ofIsTurynTypeMatrix tt6_valid` — the only one of the three whose type is a matrix. `tt6_valid` is the certificate it takes as its *argument*, and `tt6_hadamard_isHadamard` is the companion theorem, which uses [ofIsTurynTypeMatrix_isHadamard](#/node/ofIsTurynTypeMatrix_isHadamard) instead."
 ---
 
 ## Plain English

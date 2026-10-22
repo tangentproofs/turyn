@@ -10,7 +10,7 @@ caveats:
 quiz:
   - q: "This theorem plus [ofIsTurynTypeMatrix](#/node/ofIsTurynTypeMatrix) make up the proof of which headline?"
     type: text
-    answer: ["Result.tt_implies_hadamard", "tt_implies_hadamard"]
+    answer: ["Result.tt_implies_hadamard", "Turyn.Result.tt_implies_hadamard", "tt_implies_hadamard"]
     explain: "`⟨Turyn.ofIsTurynTypeMatrix h, Turyn.ofIsTurynTypeMatrix_isHadamard h⟩` — the witness and the proof."
   - q: "What are its hypotheses?"
     type: choice

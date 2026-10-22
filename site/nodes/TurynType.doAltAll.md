@@ -17,10 +17,11 @@ quiz:
     choices: ["leaves it alone", "multiplies it by `(−1)ˢ`", "sets it to 0"]
     answer: 1
     explain: "`aperiodicAutocorr_altSeqFn`. Each product `aᵢ·a_{i+s}` gains the factor `(−1)ⁱ(−1)^{i+s} = (−1)ˢ`. Doing it to all four lets the common factor be pulled out of the combined sum, which is then `(−1)ˢ · 0 = 0`."
-  - q: "Which 1-indexed position is never flipped?"
-    type: number
-    answer: 1
-    explain: "Index 0, i.e. 1-indexed position 1, gets factor `(−1)⁰ = 1`. That is why `altAll` can fix the far endpoints without disturbing the near ones in step 1 of the normalization — for even `n`."
+  - q: "Which 1-indexed positions keep their sign under `altAll`?"
+    type: choice
+    choices: ["the odd ones (1, 3, 5, …)", "the even ones (2, 4, 6, …)", "all of them", "none of them"]
+    answer: 0
+    explain: "The factor is `(−1)ⁱ` at the *0-indexed* position `i`, so the 0-indexed even positions — 1-indexed 1, 3, 5, … — keep their sign. In particular position 1 does, which is why `altAll` can fix the far endpoints without disturbing the near ones in step 1 of the normalization (for even `n`, where position `n` is 0-indexed odd and so flips)."
   - q: "Would alternating only X preserve the Turyn condition?"
     type: choice
     choices: ["yes", "no — the combined sum would become `(−1)ˢ N_X + N_Y + 2N_Z + 2N_W`, which need not vanish"]

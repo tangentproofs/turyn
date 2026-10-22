@@ -49,7 +49,7 @@ quiz:
     explain: "`(hn : 4 ≤ n)` rules it out. (The range `2 ≤ k ≤ n - 1` would be non-empty at `n = 3`, namely `k = 2`, so this is a real restriction, not a vacuous one. `xy_base_k2` is proved under the weaker `3 ≤ n`, but the exported theorem asks for `4 ≤ n`.)"
   - q: "`uAt S i` is defined as what?"
     type: text
-    answer: ["xAt S i * yAt S i", "xAt S i*yAt S i", "x_i y_i", "xAt*yAt"]
+    answer: ["xAt S i * yAt S i", "Turyn.xAt S i * Turyn.yAt S i", "xAt S i · yAt S i", "xAt*yAt", "x_i y_i", "x_i * y_i", "xi*yi", "xᵢ * yᵢ", "xᵢyᵢ"]
     explain: "`def uAt {n : Nat} (S : TurynType n) (i : Nat) : Int := xAt S i * yAt S i` — the pointwise product of X and Y at 1-indexed position `i`."
 ---
 

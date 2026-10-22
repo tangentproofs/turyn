@@ -9,7 +9,7 @@ caveats:
 quiz:
   - q: "`gsA G` is which matrix?"
     type: text
-    answer: ["circulant G.x1", "circulant of x1"]
+    answer: ["circulant G.x1", "circulant (G.x1)", "circulant x1", "circulant of x1", "the circulant of G.x1", "Turyn.circulant G.x1"]
     explain: "`def gsA {n : Nat} (G : GSData n) : IntMat n := circulant G.x1`."
   - q: "How many times does it appear in the 4 × 4 array?"
     type: number

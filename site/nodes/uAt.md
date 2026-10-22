@@ -15,7 +15,7 @@ widgets:
 quiz:
   - q: "`uAt S i` is defined as what?"
     type: text
-    answer: ["xAt S i * yAt S i", "xAt S i*yAt S i", "x_i * y_i"]
+    answer: ["xAt S i * yAt S i", "Turyn.xAt S i * Turyn.yAt S i", "xAt S i · yAt S i", "xAt*yAt", "x_i * y_i", "x_i y_i", "xi*yi", "xᵢ * yᵢ", "xᵢyᵢ"]
     explain: "`def uAt {n : Nat} (S : TurynType n) (i : Nat) : Int := xAt S i * yAt S i`."
   - q: "For `1 ≤ i ≤ n`, what is `uAt S i * uAt S i`?"
     type: number

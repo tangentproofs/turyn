@@ -14,7 +14,7 @@ quiz:
     explain: "18 `+`s and 18 `-`s. `kh05_sums` records `0, 6, 8, 5` for X, Y, Z, W."
   - q: "What is the type of `kh05X`?"
     type: text
-    answer: ["PmSeq 36"]
+    answer: ["PmSeq 36", "Turyn.PmSeq 36", "PmSeq (36)", "a PmSeq 36"]
     explain: "`def kh05X : PmSeq 36 := pm! \"+++----++-+-+-----++++-++-++++----+-\"` — 36 characters."
   - q: "Is `xAt S 36 = 1` for this quadruple (i.e. does [Canonical1](#/node/Canonical1) hold)?"
     type: choice

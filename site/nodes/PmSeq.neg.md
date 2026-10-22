@@ -9,7 +9,7 @@ caveats:
 quiz:
   - q: "What is the `data` field of `s.neg`?"
     type: text
-    answer: ["negSeqFn s.data", "negSeqFn s.data ", "-(s.data)"]
+    answer: ["negSeqFn s.data", "negSeqFn (s.data)", "negSeqFn of s.data", "-(s.data)", "-s.data", "fun i => -(s.data i)"]
     explain: "`⟨negSeqFn s.data, negSeqFn_AllPmOne s.pm⟩`, with `PmSeq.neg_data : (s.neg).data = negSeqFn s.data` as a simp lemma."
   - q: "Why is the `pm` field provable?"
     type: choice

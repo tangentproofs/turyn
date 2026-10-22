@@ -20,7 +20,7 @@ quiz:
     explain: "`W : PmSeq (n - 1)`, with `Nat` subtraction, so at `n = 0` it is `PmSeq 0`."
   - q: "How do you get a `TurynType n` from a proof `h : IsTurynType X Y Z W`?"
     type: text
-    answer: ["IsTurynType.toTyped", "h.toTyped", "toTyped"]
+    answer: ["IsTurynType.toTyped", "IsTurynType.toTyped h", "h.toTyped", "toTyped", "toTyped h", ".toTyped"]
     explain: "`def IsTurynType.toTyped (h : IsTurynType X Y Z W) : TurynType n := ⟨X, Y, Z, W, h⟩`. The `vanishing` field is `h` itself."
   - q: "Why do theorems like [energy_identity](#/node/energy_identity) take a `TurynType n` instead of four sequences and a hypothesis?"
     type: choice

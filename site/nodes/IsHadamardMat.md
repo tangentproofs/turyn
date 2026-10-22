@@ -32,10 +32,10 @@ quiz:
     choices: ["yes, vacuously", "no", "it does not type-check"]
     answer: 0
     explain: "`∀ i j` over `Fin 0` is vacuous, and both sides of the equation are the unique 0 × 0 matrix. It is worth knowing because `4 * (3 * n - 1)` is `0` at `n = 0`."
-  - q: "For [tt6_hadamard](#/node/tt6_hadamard), what is the diagonal of `H * Hᵀ`?"
+  - q: "For [tt6_hadamard](#/node/tt6_hadamard), a 68 × 68 matrix, what is each diagonal entry of `H * Hᵀ` (as an integer)?"
     type: number
     answer: 68
-    explain: "Each row dotted with itself is the sum of 68 squares of ±1, so 68 — which is `n` for this matrix."
+    explain: "Each row dotted with itself is a sum of 68 squares of ±1, so 68 — the `n` of `H * Hᵀ = (n : Int) • 1` for this matrix."
 ---
 
 ## Plain English

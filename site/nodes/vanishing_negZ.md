@@ -10,7 +10,7 @@ caveats:
 quiz:
   - q: "Which lemma about [aperiodicAutocorr](#/node/aperiodicAutocorr) does the proof use?"
     type: text
-    answer: ["aperiodicAutocorr_negSeqFn"]
+    answer: ["aperiodicAutocorr_negSeqFn", "_root_.aperiodicAutocorr_negSeqFn", "aperiodicAutocorr_negSeqFn a s", "the aperiodicAutocorr_negSeqFn lemma"]
     explain: "`unfold combinedAutocorr at hv ⊢; rw [aperiodicAutocorr_negSeqFn]; exact hv` — one rewrite and the hypothesis is already the goal."
   - q: "Why does negation not disturb the combined sum?"
     type: choice

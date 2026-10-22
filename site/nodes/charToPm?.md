@@ -9,11 +9,11 @@ caveats:
 quiz:
   - q: "What is `charToPm? '-'`?"
     type: text
-    answer: ["some (-1)", "some -1", "-1"]
+    answer: ["some (-1)", "some -1", "Option.some (-1)", "-1", "some (−1)", "some −1", "−1"]
     explain: "`if c = '+' then some 1 else if c = '-' then some (-1) else none`."
   - q: "What is `charToPm? '0'`?"
     type: text
-    answer: ["none", "None"]
+    answer: ["none", "None", "Option.none", "none (it is neither + nor -)"]
     explain: "Only `+` and `-` are recognized, so `pmSeq?` will fail on the whole string."
   - q: "Would a literal written with the Unicode minus sign `−` parse?"
     type: choice

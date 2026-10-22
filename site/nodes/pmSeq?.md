@@ -10,11 +10,11 @@ caveats:
 quiz:
   - q: "What is `pmSeq? \"\"` (the empty string)?"
     type: text
-    answer: ["some []", "some[]", "some nil"]
+    answer: ["some []", "some ([])", "some nil", "some List.nil", "Option.some []"]
     explain: "The fold's initial value is `some []`. That is how `pm! \"\" : PmSeq 0` would work — relevant because `W : PmSeq (n - 1)` is empty at `n = 1`."
   - q: "What is `pmSeq? \"+ -\"` (with a space)?"
     type: text
-    answer: ["none", "None"]
+    answer: ["none", "None", "Option.none", "none, because a space is neither + nor -"]
     explain: "The space is not `+` or `-`, so [charToPm?](#/node/charToPm?) returns `none` and the fold propagates it."
   - q: "Does it know the intended length?"
     type: choice

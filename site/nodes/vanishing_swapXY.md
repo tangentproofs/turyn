@@ -20,7 +20,7 @@ quiz:
     explain: "And even at equal lengths the weights would match, so the obstruction here is the typing, not the arithmetic."
   - q: "Which canonical rule exists because of this symmetry?"
     type: text
-    answer: ["Canonical6", "rule 6", "canonical 6"]
+    answer: ["Canonical6", "canonical 6", "Canonical6 n S", "Turyn.Canonical6", "rule 6", "rule (vi)", "6", "vi"]
     explain: "[Canonical6](#/node/Canonical6) breaks the X/Y tie, using position 2 and then position `n − 1`."
 ---
 

@@ -14,11 +14,11 @@ quiz:
     explain: "`5 - 1 - 0 = 4`."
   - q: "What is `revFin (revFin i)`?"
     type: text
-    answer: ["i", "the same index", "revFin (revFin i) = i"]
+    answer: ["i", "i itself", "i again", "the same index", "the index i", "revFin (revFin i) = i"]
     explain: "`revFin_involutive`, proved by `Fin.ext` and `omega`."
   - q: "Which matrix is built from it?"
     type: text
-    answer: ["reversalMatrix", "the reversal matrix", "reversalMatrix n", "R"]
+    answer: ["reversalMatrix", "reversalMatrix n", "Turyn.reversalMatrix", "Turyn.reversalMatrix n", "the reversal matrix", "the reversal matrix R", "R"]
     explain: "[reversalMatrix n](#/node/reversalMatrix) `i j = if j = revFin i then 1 else 0`."
 ---
 

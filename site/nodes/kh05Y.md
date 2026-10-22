@@ -16,7 +16,7 @@ quiz:
     choices: ["it need not be", "because the length 36 is even, and a sum of `k` terms of ±1 has the same parity as `k`"]
     answer: 1
     explain: "`sum_of_pm_ones_mod_two` in `Turyn/PmSum.lean`. All three length-36 sums are even and the length-35 one (`w = 5`) is odd."
-  - q: "What is `y² ` for this sequence in the energy identity?"
+  - q: "What is `y²` for this sequence in the energy identity?"
     type: number
     answer: 36
     explain: "`6² = 36`, the second term of `0 + 36 + 2·64 + 2·25 = 214`."

@@ -18,10 +18,11 @@ quiz:
     choices: ["no — `aperiodicAutocorr_reverseFn`", "yes", "only the lag-1 one"]
     answer: 0
     explain: "The products at lag `s` are the same set of pairs, enumerated from the other end."
-  - q: "For which sequence is `reverse` the identity, in the TT(6) example?"
-    type: text
-    answer: ["W", "tt6W", "W, since -+++- is a palindrome"]
-    explain: "[tt6W](#/node/tt6W) `= -+++-` is a palindrome, so `revW` leaves that quadruple unchanged."
+  - q: "In the [TT(6)](#/node/tt6_valid) example — `X = ----+-`, `Y = ---+--`, `Z = --+-++`, `W = -+++-` — reversing which one leaves the quadruple unchanged?"
+    type: choice
+    choices: ["X", "Y", "Z", "W"]
+    answer: 3
+    explain: "[tt6W](#/node/tt6W) `= -+++-` is the only palindrome of the four, so `revW` is the identity on it. Reversed, `X` becomes `-+----`, `Y` becomes `--+---` and `Z` becomes `++-+--`."
 ---
 
 ## Plain English

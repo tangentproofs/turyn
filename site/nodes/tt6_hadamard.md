@@ -24,7 +24,7 @@ quiz:
     explain: "68 × 68 = 4624, each `1` or `-1` (that part is proved in [tt6_hadamard_isHadamard](#/node/tt6_hadamard_isHadamard))."
   - q: "Where does `68` come from?"
     type: text
-    answer: ["4 * (3 * 6 - 1)", "4*(3*6-1)", "4(3n-1) with n=6", "4 * 17"]
+    answer: ["4 * (3 * 6 - 1)", "4(3 * 6 - 1)", "4(3n-1) with n=6", "4(3n − 1) at n = 6", "4 * 17", "4·17", "4 x 17", "hadamardOrder 6"]
     explain: "`4 * (3 * n - 1)` at `n = 6` is `4 * 17 = 68`. [hadamardOrder](#/node/hadamardOrder) is the same formula as a named function."
   - q: "`IntMat 68` unfolds to which Mathlib type?"
     type: choice

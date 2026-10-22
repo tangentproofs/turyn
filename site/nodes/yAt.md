@@ -10,7 +10,7 @@ caveats:
 quiz:
   - q: "`yAt S i` is defined as what?"
     type: text
-    answer: ["lookupNat S.Y.data (i - 1)", "lookupNat S.Y.data (i-1)"]
+    answer: ["lookupNat S.Y.data (i - 1)", "lookupNat (S.Y.data) (i - 1)", "Turyn.lookupNat S.Y.data (i - 1)", "lookupNat S.Y.data i - 1", "S.Y.data (i - 1)"]
     explain: "Identical in shape to [xAt](#/node/xAt), on the `Y` field."
   - q: "What is `yAt S n` for a `Canonical1` quadruple?"
     type: number

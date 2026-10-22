@@ -19,7 +19,7 @@ quiz:
     explain: "The guard `if s ≥ n then 0` fires, since `5 ≥ 5`."
   - q: "For a ±1 sequence of length `n`, what is `aperiodicAutocorr a 0`?"
     type: text
-    answer: ["n", "the length", "len", "the length n"]
+    answer: ["n", "the length", "the length n", "n (the length)", "len", "length", "length n", "(n : Int)"]
     explain: "The sum over `range (n - 0)` of `a i * a (i + 0) = a i ^ 2 = 1`, so it is `n`. (This is the diagonal term in the expansion behind [sum_sq_eq_len_add_two_totalAutocorr](#/node/sum_sq_eq_len_add_two_totalAutocorr).)"
   - q: "How many products are summed at lag `s` when `s < n`?"
     type: choice

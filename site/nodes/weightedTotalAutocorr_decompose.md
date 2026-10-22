@@ -13,11 +13,11 @@ quiz:
     choices: ["1, 1, 1, 1", "1, 1, 2, 2", "2, 2, 1, 1"]
     answer: 1
     explain: "The same weights as [combinedAutocorr](#/node/combinedAutocorr), pulled out of the sum by `← mul_sum`."
-  - q: "Why is the `w` term not simply `∑_{s=1}^{n−1} N_w(s)`?"
+  - q: "Why does the `w` term need the helper lemma `sum_w_ext`?"
     type: choice
-    choices: ["it is, after noting the extra term is `0`", "because `w` is shorter, so `totalAutocorr w` stops at `n − 2`; the two agree because `N_w(n − 1) = 0`", "because `w` is weighted"]
+    choices: ["because `totalAutocorr` starts its sum at lag `0`", "because `w` has length `n − 1`, so `totalAutocorr w` sums only lags `1 … n − 2`, while the left-hand side runs to lag `n − 1`", "because the `w` term carries the weight `2`"]
     answer: 1
-    explain: "Both readings of the second option are the same point: `sum_w_ext` shows the length-`n − 1` sum equals the length-`n − 2` sum, since the final term's lag equals W's length and [aperiodicAutocorr](#/node/aperiodicAutocorr)'s guard returns `0`."
+    explain: "`totalAutocorr` of a length-`k` sequence sums lags `1 … k − 1`, and here `k = n − 1`, so it stops one lag short of the left-hand side. `sum_w_ext` closes the gap: the missing term's lag equals W's length, so [aperiodicAutocorr](#/node/aperiodicAutocorr)'s guard makes it `0`. (`totalAutocorr` starts at lag 1, not 0, and the weight `2` is pulled out separately by `← mul_sum`.)"
   - q: "Does the lemma need the quadruple to be Turyn-type?"
     type: choice
     choices: ["yes", "no — it is an identity about four arbitrary integer sequences of shape `(n, n, n, n − 1)`"]

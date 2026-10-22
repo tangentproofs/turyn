@@ -20,7 +20,7 @@ quiz:
     explain: "`vanishing_swapXY` is proved by `linarith` after unfolding: `N_Y + N_X + 2N_Z + 2N_W` is the same number as `N_X + N_Y + 2N_Z + 2N_W`."
   - q: "Which canonical condition exists to break the symmetry this move creates?"
     type: text
-    answer: ["Canonical6", "canonical 6", "rule 6"]
+    answer: ["Canonical6", "canonical 6", "Canonical6 n S", "Turyn.Canonical6", "rule 6", "rule (vi)", "6", "vi"]
     explain: "[Canonical6](#/node/Canonical6) compares X and Y at position 2 and, failing that, at `n − 1`."
 ---
 

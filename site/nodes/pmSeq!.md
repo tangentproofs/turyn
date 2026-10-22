@@ -11,7 +11,7 @@ caveats:
 quiz:
   - q: "What is `pmSeq! \"+-\"`?"
     type: text
-    answer: ["[1, -1]", "[1,-1]"]
+    answer: ["[1, -1]", "[1, −1]", "1, -1", "[(1 : Int), -1]", "[1, -1] : List Int"]
     explain: "`+` maps to `1` and `-` to `-1`, via `charToPm?`, folded right over `s.toList`."
   - q: "What happens with `pmSeq! \"+x-\"`?"
     type: choice

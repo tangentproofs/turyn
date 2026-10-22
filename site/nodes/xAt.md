@@ -11,7 +11,7 @@ caveats:
 quiz:
   - q: "If `S.X.data = (a₀, a₁, a₂)`, what is `xAt S 2`?"
     type: text
-    answer: ["a1", "a₁", "the middle entry", "S.X.data 1"]
+    answer: ["a1", "a₁", "a_1", "the middle entry", "the second entry", "S.X.data 1", "lookupNat S.X.data 1"]
     explain: "`lookupNat S.X.data (2 - 1) = lookupNat S.X.data 1`, the second entry in 1-indexed terms."
   - q: "What is `xAt S 0`?"
     type: choice

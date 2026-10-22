@@ -10,7 +10,7 @@ caveats:
 quiz:
   - q: "Which lemma about [aperiodicAutocorr](#/node/aperiodicAutocorr) does the proof use?"
     type: text
-    answer: ["aperiodicAutocorr_reverseFn"]
+    answer: ["aperiodicAutocorr_reverseFn", "_root_.aperiodicAutocorr_reverseFn", "aperiodicAutocorr_reverseFn a s", "the aperiodicAutocorr_reverseFn lemma"]
     explain: "`unfold combinedAutocorr at hv ⊢; rw [aperiodicAutocorr_reverseFn]; exact hv` — one rewrite and the hypothesis is already the goal."
   - q: "Why does reversal not disturb the combined sum?"
     type: choice

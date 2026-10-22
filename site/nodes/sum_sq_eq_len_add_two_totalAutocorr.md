@@ -18,10 +18,10 @@ quiz:
     choices: ["that the quadruple is Turyn-type", "only `AllPmOne a`", "`n ≥ 1`", "none"]
     answer: 1
     explain: "`theorem sum_sq_eq_len_add_two_totalAutocorr {n : Nat} (a : Fin n → Int) (h : AllPmOne a)`. One sequence, ±1 entries, nothing else."
-  - q: "Check it on `a = +-+` (length 3, lags `N(1) = -2`, `N(2) = 1`)."
+  - q: "Check it on `a = +-+` (length 3, lags `N(1) = -2`, `N(2) = 1`): what common value do the two sides take?"
     type: number
     answer: 1
-    explain: "`Σ a = 1`, so the left side is `1`. The right side is `3 + 2(-2 + 1) = 3 - 2 = 1` ✓."
+    explain: "`Σ a = 1`, so the left side is `1² = 1`. The right side is `3 + 2(-2 + 1) = 3 - 2 = 1` ✓."
   - q: "Where does the `n` on the right-hand side come from?"
     type: choice
     choices: ["the number of lags", "the diagonal terms `aᵢ · aᵢ`, each equal to 1", "the cast of the sum"]

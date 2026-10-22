@@ -26,7 +26,7 @@ quiz:
     explain: "`periodicAutocorr_eq_aperiodic` in `Turyn/TSequence.lean`: the wrapped products split into the ones that do not wrap (lag `s`) and the ones that do (lag `n − s`). This is the bridge between the Turyn condition and the Goethals–Seidel condition."
   - q: "For a ±1 vector, what is `periodicAutocorr x 0`?"
     type: text
-    answer: ["n", "the length", "the length n"]
+    answer: ["n", "the length", "the length n", "n (the length)", "len", "length", "length n", "(n : Int)"]
     explain: "Each term is `x i ² = 1`. The lemma is `periodicAutocorr_zero_pmOne`, and it is what puts `n` on the diagonal of `circulant x * (circulant x)ᵀ`."
 ---
 
