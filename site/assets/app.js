@@ -549,11 +549,12 @@ function trustPage() {
   app.innerHTML = `<h1>Trust: what was checked, and how</h1>
   <div class="eli5">
   <p>A formal proof is worth what its statement says and what actually checked it. Here is the accounting, with the
-  one place where the library's own README overstates things.</p>
+  one place where the library's own README used to overstate things (corrected on this branch).</p>
 
   <h2>The build</h2>
   <p><code>lake build</code> of <code>lean/</code> (Lean v4.28.0, Mathlib v4.28.0, Mathlib's cache) succeeds on this
-  site's build machine, as do <code>lake build Results Challenge</code>. No Lean file was changed for this site.
+  site's build machine, as do <code>lake build Results Challenge</code>. No Lean statement or proof was changed for this site (only README wording and one
+  <code>Challenge.lean</code> docstring).
   <code>Challenge.lean</code> contains two <code>sorry</code>s: it is the <i>challenge module</i> for
   <a href="https://github.com/leanprover/comparator" target="_blank" rel="noopener">comparator</a> — the two headline
   statements with their proofs blanked out — and <code>Results.lean</code> proves the same two statements. That is the
@@ -571,9 +572,9 @@ function trustPage() {
   answer via the axiom <code>Lean.ofReduceBool</code>. The kernel does <b>not</b> re-check the computation; you are
   trusting Lean's compiler, its runtime and any <code>implemented_by</code>/<code>extern</code> code the check reaches.
   For a check this small (35 sums of products of ±1s) that risk is small, but it is a different kind of guarantee.</p>
-  <p class="panel caveats"><b>Correction to <code>lean/README.md</code>.</b> The README says the library is
+  <p class="panel caveats"><b>Correction to <code>lean/README.md</code>.</b> The README used to say the library is
   “axiom-free beyond Lean's three standard axioms” and that <code>native_decide</code> “certifies the result” so that
-  everything is “fully verified by Lean's kernel”. That holds for the general theorems above, but <b>not</b> for the
+  everything is “fully verified by Lean's kernel” (it now states the split below). That holds for the general theorems above, but <b>not</b> for the
   concrete TT(6) and TT(36) theorems, which depend on <code>Lean.ofReduceBool</code> and
   <code>Lean.trustCompiler</code>. Comparator's <code>permitted_axioms</code> list is the standard three, which is
   consistent: comparator is only asked about the two general theorems.</p>
@@ -591,7 +592,7 @@ function trustPage() {
   normalization, not the full six-part <a href="#/node/Canonical"><code>Canonical</code></a>.</li>
   <li><a href="#/node/canonical_representative_exists"><code>canonical_representative_exists</code></a> is for even
   n ≥ 2, and proves existence only; uniqueness of the canonical form is not formalized.</li>
-  <li>The README describes a base-sequence → T-sequence → Goethals–Seidel pipeline. The Lean's construction goes
+  <li>The classical route is base sequences → T-sequence → Goethals–Seidel. The Lean's construction goes
   straight from the TT(n) to a T-sequence (<a href="#/node/step2"><code>step2</code></a>); the base sequences of
   <a href="#/node/step1"><code>step1</code></a> are proved correct but no headline theorem uses them.</li>
   <li>Nothing here proves that a TT(n) exists for any n other than 6 and 36 (with n = 1, 2 and 4 found only by this

@@ -5,7 +5,7 @@ summary: "Builds `A = Z ++ W`, `B = Z ++ (−W)`, `C = X`, `D = Y` and proves th
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "**Unused by the headline results.** [turynToHadamardMatrix](#/node/turynToHadamardMatrix) calls [step2](#/node/step2) on the quadruple directly. `step1`'s `usedBy` list in the declaration graph is empty and its depth is `null`. The README's 'base-sequence → T-sequence → Goethals–Seidel' description is the classical route, not this library's code path."
+  - "**Unused by the headline results.** [turynToHadamardMatrix](#/node/turynToHadamardMatrix) calls [step2](#/node/step2) on the quadruple directly. `step1`'s `usedBy` list in the declaration graph is empty and its depth is `null`. The classical 'base-sequence → T-sequence → Goethals–Seidel' route is not this library's code path."
   - "The length juggling is real but uninteresting: `2 * n - 1` and `n + (n - 1)` are equal as `Nat`s (`two_n_sub_one_eq`, by cases on `n`), and the private helper `step1_pmSeq` relabels the index so that `aperiodicAutocorr` is unchanged."
   - "At `n = 0` both are `0`, so the statement degenerates harmlessly."
 widgets:
@@ -75,5 +75,5 @@ This is the classical first stage of the Turyn construction, and it is proved he
 [turynToHadamardMatrix](#/node/turynToHadamardMatrix) does not call it: [step2](#/node/step2)
 builds its T-sequence straight from the quadruple, placing Z and W in separate windows rather than
 concatenating them. Both routes work; the Lean took the shorter one and left this file as a
-proved-but-unused road. If you are checking the library against the README, this is the one place
-the two descriptions genuinely diverge.
+proved-but-unused road. If you are checking the library against the classical literature, this is the one
+place the two routes genuinely diverge.

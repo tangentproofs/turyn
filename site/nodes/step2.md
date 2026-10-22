@@ -5,7 +5,7 @@ summary: "Lays Z, W, (X+Y)/2 and (X−Y)/2 out along `3n − 1` positions, and p
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "**The README's pipeline is not the Lean's.** `lean/README.md` describes a base-sequence → T-sequence → Goethals–Seidel route. The Lean's [turynToHadamardMatrix](#/node/turynToHadamardMatrix) applies `step2` directly to the quadruple; the base sequences of [step1](#/node/step1) are proved correct but are used by no headline theorem (their `depth` in the declaration graph is `null`)."
+  - "**Not the classical pipeline.** The classical route is base sequences → T-sequence → Goethals–Seidel. The Lean's [turynToHadamardMatrix](#/node/turynToHadamardMatrix) applies `step2` directly to the quadruple; the base sequences of [step1](#/node/step1) are proved correct but are used by no headline theorem (their `depth` in the declaration graph is `null`)."
   - "`(X+Y)/2` and `(X−Y)/2` use integer division. That is safe but worth stating: for `x, y ∈ {±1}`, `x + y ∈ {−2, 0, 2}`, so the division is exact and every convention agrees. Exactly one of the two is non-zero at each position."
   - "`3 * n - 1` truncates: at `n = 0` it is `0`, so `step2` returns a `TSequence 0`, whose two conditions are vacuous."
   - "Lengths work out but not obviously: Z fills `[0, n)` (n positions), W fills `[n, 2n−1)` (n − 1 positions), and the two halves of X, Y share `[2n−1, 3n−1)` (n positions). Total `n + (n − 1) + n = 3n − 1`."

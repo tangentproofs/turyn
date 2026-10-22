@@ -5,7 +5,7 @@ summary: "Four ±1 sequences of lengths `2n − 1, 2n − 1, n, n` whose four ap
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "**Not on the path to the Hadamard theorem.** [step1](#/node/step1) builds a `BaseSeqData n` from a TT(n) and proves the vanishing field, but no headline theorem uses it: the declaration graph gives both `step1` and `BaseSeqData` a `depth` of `null`, meaning they are not reachable from the headline results. `lean/README.md` describes the pipeline as base sequences → T-sequence → Goethals–Seidel; the Lean's [turynToHadamardMatrix](#/node/turynToHadamardMatrix) skips the first stage."
+  - "**Not on the path to the Hadamard theorem.** [step1](#/node/step1) builds a `BaseSeqData n` from a TT(n) and proves the vanishing field, but no headline theorem uses it: the declaration graph gives both `step1` and `BaseSeqData` a `depth` of `null`, meaning they are not reachable from the headline results. The classical pipeline is base sequences → T-sequence → Goethals–Seidel; the Lean's [turynToHadamardMatrix](#/node/turynToHadamardMatrix) skips the first stage."
   - "The vanishing field has no upper bound on `s`: `∀ s : Nat, 1 ≤ s → …`. That is fine, because all four terms are `0` once `s` passes the longest length (`aperiodicAutocorr_zero_of_ge`)."
   - "The weights are all 1 here, unlike [combinedAutocorr](#/node/combinedAutocorr)'s 1, 1, 2, 2. The factor 2 has been absorbed by duplicating Z and W into two longer sequences."
 widgets:
@@ -54,8 +54,7 @@ disappeared because Z and W have been folded into two sequences of length `2n �
 doubles their contributions — see [step1](#/node/step1) for the trick.
 
 It is worth being clear that this is a **side road** in this library. The published route from
-Turyn-type sequences to Hadamard matrices goes through base sequences, and `lean/README.md`
-describes the pipeline that way, but the Lean's
+Turyn-type sequences to Hadamard matrices goes through base sequences, but the Lean's
 [turynToHadamardMatrix](#/node/turynToHadamardMatrix) does not: it applies
 [step2](#/node/step2) to the quadruple directly. `BaseSeqData` and `step1` are proved correct and
 then not used — the declaration graph assigns them no depth, because nothing reachable from the

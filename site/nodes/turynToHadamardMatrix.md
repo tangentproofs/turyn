@@ -5,7 +5,7 @@ summary: "`typedGsMatrixOfTSequence (step2 T)`: run step 2 on a bundled TT(n), t
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "**No base sequences.** The README's pipeline description mentions a base-sequence stage; this definition goes straight from the quadruple to a T-sequence. [step1](#/node/step1) is proved but unused here."
+  - "**No base sequences.** The classical pipeline has a base-sequence stage; this definition goes straight from the quadruple to a T-sequence. [step1](#/node/step1) is proved but unused here."
   - "A definition, so it computes: all `16 (3n − 1)²` entries can be evaluated. Its correctness is [turynToHadamardMatrix_isHadamard](#/node/turynToHadamardMatrix_isHadamard)."
   - "The order `4 * (3 * n - 1)` uses `Nat` subtraction, so it is `0` at `n = 0`."
 widgets:

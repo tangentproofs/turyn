@@ -5,7 +5,7 @@ summary: "For a Turyn-type quadruple of length `n ≥ 4` whose six endpoint sign
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "The hypothesis is only [Canonical1](#/node/Canonical1) — the six endpoint signs — not the full six-part [Canonical](#/node/Canonical). `Challenge.lean`'s docstring says 'a canonical Turyn sequence', which is looser than the Lean; the Lean asks for `Canonical1 n S` and nothing else."
+  - "The hypothesis is only [Canonical1](#/node/Canonical1) — the six endpoint signs — not the full six-part [Canonical](#/node/Canonical). `Turyn/XY.lean`'s docstring says 'a canonical Turyn sequence', which is looser than the Lean (`Challenge.lean`'s now says 'endpoint-normalized (`Canonical1`)'); the Lean asks for `Canonical1 n S` and nothing else."
   - "The input is the bundled [TurynType n](#/node/TurynType) record, not a loose `IsTurynType` certificate. If you have the latter, convert with [IsTurynType.toTyped](#/node/IsTurynType.toTyped)."
   - "The published [TT(6)](#/node/tt6_valid) is *not* `Canonical1` (its `xAt 1` is `-1`), so the theorem does not apply to it as written. Negating all four sequences (four of the ten [Elementary](#/node/Elementary) moves) gives an equivalent quadruple that is `Canonical1`, and the law then applies at k = 2, 3, 4, 5."
   - "Outside the Lean: because the relation pairs `k` with `n + 1 − k`, an odd `n ≥ 5` would force `u` at `k = (n+1)/2` to equal its own negation, which is impossible for a ±1 value. So no `Canonical1` TT(n) exists for odd `n ≥ 5`. That corollary follows from this theorem plus `uAt_pm`, but no theorem in the library states it."
