@@ -1,0 +1,37 @@
+---
+id: gsD
+title: "gsD: the fourth circulant block"
+summary: "`gsD G = circulant G.x4` — one of the three blocks that enter the array twisted by the reversal matrix."
+review: draft
+authors: ["claude (for @tangentstorm)"]
+caveats:
+  - "A one-line abbreviation, following the classical `A, B, C, D` naming for the fields `x1 … x4`."
+  - "In the array it never appears bare: it occurs as `gsD G * reversalMatrix n` and, transposed and reversed, as `±trCirculant G.x4`."
+quiz:
+  - q: "`gsD G` is which matrix?"
+    type: text
+    answer: ["circulant G.x4", "circulant of x4"]
+    explain: "`def gsD {n : Nat} (G : GSData n) : IntMat n := circulant G.x4`."
+  - q: "Does it appear on the diagonal of the array?"
+    type: choice
+    choices: ["yes", "no — the diagonal is always [gsA](#/node/gsA)"]
+    answer: 1
+    explain: "All four diagonal blocks of `gsMatrixEntry` are `gsA G`."
+  - q: "What twist does it get?"
+    type: choice
+    choices: ["right multiplication by the [reversal matrix](#/node/reversalMatrix)", "transposition only", "none"]
+    answer: 0
+    explain: "`gsD G * reversalMatrix n` in the first row/column, and [trCirculant](#/node/trCirculant) `G.x4 = (circulant G.x4)ᵀ * reversalMatrix n` in the inner blocks."
+---
+
+## Plain English
+
+```
+def gsD {n : Nat} (G : GSData n) : IntMat n := circulant G.x4
+```
+
+The [circulant](#/node/circulant) of the last of the four ±1 vectors of a
+[GSData](#/node/GSData). Unlike [gsA](#/node/gsA) it always appears twisted in the
+[array](#/node/gsMatrix), either as `gsD G * R` or as
+[trCirculant](#/node/trCirculant) `G.x4`, which is what breaks the commutativity that
+would otherwise stop the off-diagonal blocks from cancelling.
