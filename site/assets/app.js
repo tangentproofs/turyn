@@ -119,7 +119,7 @@ function graphPage() {
           <div>Everything the headline results use: <b>${cov.n}</b> / ${cov.total} declarations understood</div>
           <div class="progress-bar"><div style="width:${(100 * cov.n) / cov.total}%"></div></div>
           <ul class="small headlines">${HEADLINES.map((h) => `<li><span class="sw" style="background:${COLORS[status(h)]}"></span><a href="#/node/${encodeURIComponent(h)}">${esc(h)}</a></li>`).join("")}</ul>
-          <p class="small muted">${understood(MAIN) ? "You understand the <b>statement</b> that every TT(n) gives a Hadamard matrix." : `To understand <a href="#/node/${MAIN}">tt_implies_hadamard</a>, sign off on it and on everything it mentions (eight declarations in all).`}</p>
+          <p class="small muted">${understood(MAIN) ? "You understand the <b>statement</b> that every TT(n) gives a Hadamard matrix." : `To understand <a href="#/node/${MAIN}">tt_implies_hadamard</a>, sign off on it and on everything its statement mentions (eight further declarations).`}</p>
         </div>
         <div class="panel legend">
           <h3>Legend</h3>
@@ -526,8 +526,9 @@ function aboutPage() {
   <ul>
   <li><b>The Lean library</b>: Michal Wallace (<a href="https://github.com/tangentstorm" target="_blank" rel="noopener">tangentstorm</a>),
   MIT, with proofs and refactors contributed by AI tools as recorded in the git history (Claude, OpenAI Codex — the XY
-  product law is credited to Codex in the source — and Harmonic's Aristotle for the canonical-form proof and two
-  migrations).</li>
+  product law is credited to Codex in the source — and Harmonic's Aristotle, co-author of the commits that migrated
+  <code>Equivalence.lean</code>, <code>XY.lean</code> and <code>TSequence.lean</code> to the function-typed carriers
+  and that cleaned up <code>GoethalsSeidel.lean</code>).</li>
   <li><b>The mathematics</b>: R. J. Turyn (Turyn-type sequences); J.-M. Goethals and J. J. Seidel (1967, the array);
   H. Kharaghani and B. Tayfeh-Rezaie (2005, the TT(36) and the order-428 Hadamard matrix); D. Best, D. Ž. Đoković,
   H. Kharaghani and H. Ramp (2013, arXiv:1206.4107, the classification and the six-step normalization).</li>

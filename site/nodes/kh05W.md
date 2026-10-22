@@ -31,5 +31,7 @@ def kh05W : PmSeq 35 := pm! "+++-+-----++--+-+++--+-+-+++-++++-+"
 Sum `5`, contributing `2w² = 50` to the energy total `0 + 36 + 128 + 50 = 214`.
 
 Of the 35 lags that [kharaghani_2005_tt36](#/node/kharaghani_2005_tt36) checks, the last one —
-`s = 35` — is the only one where W drops out entirely, because the shifted copy has slid clear of
-a length-35 sequence. All the others combine four non-trivial numbers.
+`s = 35` — is the only one where W drops out *by definition*: the shifted copy has slid clear of a
+length-35 sequence, so [aperiodicAutocorr](#/node/aperiodicAutocorr)'s guard `if s ≥ n then 0`
+fires. (`N_W(s)` also happens to come out `0` at `s = 17, 27, 29, 31, 33` for this particular
+sequence, but there the sum is a genuine sum of products that cancels.)

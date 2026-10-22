@@ -6,7 +6,7 @@ review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
   - "Proved by `native_decide`. `#print axioms` reports `Lean.ofReduceBool` and `Lean.trustCompiler` on top of the standard three, so the kernel did *not* re-evaluate the 35 sums — Lean's compiler and runtime did, and the kernel took their word. `lean/README.md` says the library is axiom-free beyond the standard three; that is not true of this theorem. See [#/trust](#/trust)."
-  - "A kernel-only check is feasible for the small case: `decide +kernel` proves the TT(6) analogue in seconds with only the three standard axioms. Whether the same works at `n = 36` is not settled in this repository."
+  - "A kernel-only check is feasible, here too: outside this repository, `decide +kernel` proves this very statement — `IsTurynType kh05X kh05Y kh05Z kh05W` — with only `propext`, `Classical.choice` and `Quot.sound` (about 8 s of CPU on top of loading Mathlib), as it does the TT(6) analogue in seconds. The committed library still uses `native_decide`. See [#/trust](#/trust)."
   - "The theorem says these sequences pass the test. It says nothing about how they were found, nothing about uniqueness, and nothing about other TT(36)s."
 widgets:
   - type: seq-editor

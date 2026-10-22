@@ -26,7 +26,7 @@ quiz:
     type: choice
     choices: ["yes", "no — only that at least one is reachable"]
     answer: 1
-    explain: "The docstring of `canonical_representative_exists` says 'uniqueness within the orbit is not yet formalized', and the Lean bears that out."
+    explain: "`canonical_representative_exists` concludes `∃ T, Equivalent n S T ∧ Canonical n T` — at least one canonical quadruple is reachable. No theorem in the library says there is at most one, and [Equivalent](#/node/Equivalent) is not even proved symmetric. (`lean/README.md` says the same: 'uniqueness within the orbit is not yet formalized'.)"
   - q: "Is `Canonical` a `Prop` or a `Bool`?"
     type: choice
     choices: ["a `Prop`, with no decidability instance in the library", "a `Bool`", "a `Prop` with a `Decidable` instance"]

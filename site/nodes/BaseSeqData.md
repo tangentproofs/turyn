@@ -1,7 +1,7 @@
 ---
 id: BaseSeqData
 title: "BaseSeqData n: base sequences (a side road)"
-summary: "Four ±1 sequences of lengths `2n − 1, 2n − 1, n, n` whose four *unweighted* aperiodic autocorrelations vanish at every lag `s ≥ 1`."
+summary: "Four ±1 sequences of lengths `2n − 1, 2n − 1, n, n` whose four aperiodic autocorrelations *sum to zero* — with equal weights — at every lag `s ≥ 1`."
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:

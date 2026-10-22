@@ -5,7 +5,7 @@ summary: "The four sequences `----+-`, `---+--`, `--+-++`, `-+++-` are Turyn-typ
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "Proved by `native_decide`, so `#print axioms` reports `Lean.ofReduceBool` and `Lean.trustCompiler` as well as the standard three. Unlike the `n = 36` case, this one is small enough for the kernel: `decide +kernel` proves the same statement in seconds with only `propext`, `Classical.choice` and `Quot.sound` (checked outside the repository, not committed). See [#/trust](#/trust)."
+  - "Proved by `native_decide`, so `#print axioms` reports `Lean.ofReduceBool` and `Lean.trustCompiler` as well as the standard three. The kernel can do this one instead: `decide +kernel` proves the same statement in seconds with only `propext`, `Classical.choice` and `Quot.sound` (checked outside the repository, not committed — and it works at `n = 36` too). See [#/trust](#/trust)."
   - "This quadruple is **not** [Canonical1](#/node/Canonical1) — its first X entry is `-1`, not `+1` — so results with that hypothesis, such as [the XY law](#/node/Result.xy_interior_antipalindrome), do not apply to it as published. Negating all four sequences gives an [Equivalent](#/node/Equivalent) quadruple that is."
 widgets:
   - type: seq-editor

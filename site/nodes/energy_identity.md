@@ -59,7 +59,8 @@ quiz:
 
 Add up the pluses and minuses in each of the four rows. Square the four answers, counting the last
 two twice, and add them. You always get the same number — six times the length, minus two — no
-matter which Turyn-type rows you started from.
+matter which Turyn-type rows you started from, as long as the rows are not empty (the Lean asks for
+`n ≥ 1`).
 
 ## Plain English
 

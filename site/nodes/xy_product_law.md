@@ -9,7 +9,7 @@ caveats:
   - "`4 ≤ n` is the stated bound. The two base cases are proved separately, and `xy_base_k2` actually needs only `3 ≤ n`; the exported theorem does not take advantage of that."
   - "Proved by strong induction on `k` (`Nat.strongRecOn`), so the `k = 2` and `k = 3` cases must be established on their own — they are `xy_base_k2` and `xy_base_k3`."
   - "The corollary `xy_product_eq_neg_one` restates the conclusion as `xAt S k * yAt S k * xAt S (n+1-k) * yAt S (n+1-k) = -1` on the same range."
-  - "The closing remark about `Canonical1` possibly being unnecessary is a brute-force observation at `n = 4` and `n = 6`, not a theorem."
+  - "The closing remark about `Canonical1` possibly being unnecessary is a brute-force observation at `n = 4`, `n = 6` and `n = 8`, not a theorem. `Canonical1` is a hypothesis the Lean proof uses; nothing here shows it is needed, and nothing shows it is not."
 widgets:
   - type: xy-law
     title: "The conclusion, checked pair by pair"
@@ -119,7 +119,8 @@ using the endpoint signs from [Canonical1](#/node/Canonical1).
 There is no clever algebraic identity and no appeal to the literature: the whole thing is a parity
 count, and the `Canonical1` hypothesis is used only to know the values at the two ends. The result
 was found by a machine search over conjectures (the docstring credits codex) and then proved. Something
-the Lean leaves open: exhaustive enumeration of all 128 TT(4) and all 1536 TT(6) quadruples finds
-none, canonical or not, that violates the conclusion (checked outside the Lean while writing this
-page; the site's `xy-law` widget reports the same for `n = 8`). So `Canonical1` may be dispensable.
+the Lean leaves open: exhaustive enumeration of all 128 TT(4), all 1536 TT(6) and all 4096 TT(8)
+quadruples finds none, canonical or not, that violates the conclusion (computed in JavaScript
+outside the Lean while writing this page — the site's `xy-law` widget reports that finding in its
+notes, but it only ever evaluates the one quadruple on screen). So `Canonical1` may be dispensable.
 The Lean does not say that, and its proof does use the hypothesis.

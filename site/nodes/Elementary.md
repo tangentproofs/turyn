@@ -65,8 +65,13 @@ Each `do*` function (`TurynType.doNegX` and friends) rebuilds the whole record, 
 That these ten moves exist is why canonicalization is worth doing. A search program that enumerates
 all quadruples would find each solution many times over; normalizing to a representative
 ([canonical_representative_exists](#/node/canonical_representative_exists)) cuts the count. In the
-other direction, it is also why a result proved for `Canonical1` quadruples applies more widely
-than it looks — any quadruple can be moved into that form.
+other direction, it is why a result proved only for `Canonical1` quadruples can still be useful:
+`step1_condition1` shows that for **even `n ≥ 2`** some quadruple reachable from yours has those
+six endpoint signs. That is a statement about the *normalized* quadruple, though — transferring a
+conclusion back to the original one is not something the Lean does. (And for odd `n ≥ 5` there is
+no `Canonical1` quadruple at all: that follows from the
+[XY law](#/node/Result.xy_interior_antipalindrome) plus `uAt_pm`, but no theorem in the library
+draws the conclusion.)
 
 ## What is *not* here
 

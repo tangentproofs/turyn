@@ -30,8 +30,11 @@ def revFin {n : Nat} (i : Fin n) : Fin n := ⟨n - 1 - i.1, _⟩
 
 "Count from the other end": `0 ↦ n−1`, `1 ↦ n−2`, and so on. An involution.
 
-It is the index-level operation behind two things: the sequence reversal `reverseFn`
-(`a ↦ fun i => a (revFin i)`, used by the `revX`…`revW` [elementary moves](#/node/Elementary)) and
-the [reversal matrix](#/node/reversalMatrix) `R` that twists the Goethals–Seidel blocks. The two
-private lemmas `revFin_sub_comm` (`revFin j - i = revFin i - j`) and `sub_revFin_comm` are the
-small commutation facts that the block cancellations run on.
+In the Lean it is used for one thing: the [reversal matrix](#/node/reversalMatrix) `R` that twists
+the Goethals–Seidel blocks, `R i j = if j = revFin i then 1 else 0`. The two private lemmas
+`revFin_sub_comm` (`revFin j - i = revFin i - j`) and `sub_revFin_comm` are the small commutation
+facts that the block cancellations run on.
+
+The sequence-level reversal [reverseFn](#/node/reverseFn) — behind the `revX`…`revW`
+[elementary moves](#/node/Elementary) — writes out the same index map `i ↦ n - 1 - i` for itself;
+the two definitions live in different files and neither mentions the other.

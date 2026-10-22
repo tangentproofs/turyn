@@ -16,10 +16,10 @@ quiz:
     type: number
     answer: -1
     explain: "`(-1 - 1)/2 = -1`."
-  - q: "Of `step2c T i` and `step2d T i`, how many are non-zero?"
+  - q: "At a position `i` in the final block (`2n − 1 ≤ i < 3n − 1`), how many of `step2c T i` and `step2d T i` are non-zero?"
     type: number
     answer: 1
-    explain: "Exactly one, for every position in the final block. The lemma is `natAbs_halfSum_add_natAbs_halfDiff_eq_one`, proved `by decide` on the four sign cases."
+    explain: "Exactly one, by `natAbs_halfSum_add_natAbs_halfDiff_eq_one`, proved `by decide` on the four sign cases. Before the final block both rows are `0` — there the non-zero entry is in row a or row b."
 ---
 
 ## Plain English

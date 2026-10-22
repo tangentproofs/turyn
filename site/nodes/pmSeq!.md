@@ -7,7 +7,7 @@ authors: ["claude (for @tangentstorm)"]
 caveats:
   - "The failure mode is `panic!`, not a compile error: a bad character makes `pmSeq! s` evaluate to `default` (the empty list) with a message, rather than being rejected by the elaborator. In practice a wrong character shows up immediately anyway, because the surrounding `pm!` macro then fails its `decide` for the length."
   - "This is only the parse step. It produces a `List Int`, with no length or ±1 guarantee in its type; [PmSeq.ofList](#/node/PmSeq.ofList) adds both."
-  - "The `pm!` *macro* (declaration `termPm!_`) is a separate thing: `pm! \"..\"` expands to `PmSeq.ofList (pmSeq! \"..\") (by decide) (by decide)`."
+  - "The `pm!` *macro* is a separate thing (a `syntax` + `macro_rules` pair in `Turyn/TurynType.lean`, not a declaration with a node here): `pm! \"..\"` expands to `PmSeq.ofList (pmSeq! \"..\") (by decide) (by decide)`."
 quiz:
   - q: "What is `pmSeq! \"+-\"`?"
     type: text

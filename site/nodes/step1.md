@@ -1,7 +1,7 @@
 ---
 id: step1
 title: "step1: base sequences from a TT(n) (proved, unused)"
-summary: "Builds `A = Z ++ W`, `B = Z ++ (−W)`, `C = X`, `D = Y` and proves their four aperiodic autocorrelations cancel at every lag — a correct stage that the headline construction does not use."
+summary: "Builds `A = Z ++ W`, `B = Z ++ (−W)`, `C = X`, `D = Y` and proves their four aperiodic autocorrelations sum to zero at every lag `s ≥ 1` — a correct stage that the headline construction does not use."
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:

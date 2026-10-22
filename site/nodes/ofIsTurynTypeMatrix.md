@@ -1,7 +1,7 @@
 ---
 id: ofIsTurynTypeMatrix
 title: "ofIsTurynTypeMatrix: the user-facing entry point"
-summary: "Takes a loose `IsTurynType` certificate and returns the explicit Hadamard matrix of order `4(3n − 1)`."
+summary: "Takes a loose `IsTurynType` certificate and returns an explicit matrix of order `4(3n − 1)` — Hadamard by the companion theorem [ofIsTurynTypeMatrix_isHadamard](#/node/ofIsTurynTypeMatrix_isHadamard)."
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
@@ -37,10 +37,12 @@ def ofIsTurynTypeMatrix {n : Nat} {X Y Z : PmSeq n} {W : PmSeq (n - 1)}
 The convenience wrapper, and the one the README tells users to call. You write four `pm!` literals,
 prove `IsTurynType` by `native_decide`, hand the proof to this function, and get a matrix.
 
-The two theorems in `Results.lean` are built from it:
+One of the two theorems in `Results.lean` is built from it:
 [Result.tt_implies_hadamard](#/node/Result.tt_implies_hadamard) packages this definition together
 with [ofIsTurynTypeMatrix_isHadamard](#/node/ofIsTurynTypeMatrix_isHadamard) into the existential
-form comparator checks.
+form comparator checks. (The other,
+[Result.xy_interior_antipalindrome](#/node/Result.xy_interior_antipalindrome), has nothing to do
+with matrices.)
 
 A small Lean point: the proof `h` is an *argument used as data*, since it becomes the `vanishing`
 field of the record [IsTurynType.toTyped](#/node/IsTurynType.toTyped) builds. That is harmless —

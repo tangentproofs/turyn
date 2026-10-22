@@ -25,9 +25,9 @@ quiz:
     explain: "Multiplying by the permutation matrix `R` just permutes entries; it does not mix them. Each entry of the product is a single entry of `x`."
   - q: "Which blocks of the array use it?"
     type: choice
-    choices: ["the four diagonal blocks", "the off-diagonal blocks involving the third and fourth sequences", "none"]
+    choices: ["the four diagonal blocks", "the off-diagonal blocks outside the first block row and column — built from `x2`, `x3` and `x4`", "none"]
     answer: 1
-    explain: "In `gsMatrixEntry` the blocks `trCirculant G.x4`, `-(trCirculant G.x3)`, `trCirculant G.x2`, `-(trCirculant G.x2)`, `trCirculant G.x3`, `-(trCirculant G.x4)` sit in the off-diagonal positions; the diagonal is always `gsA G = circulant G.x1`."
+    explain: "In `gsMatrixEntry` the six blocks `trCirculant G.x4`, `-(trCirculant G.x3)`, `-(trCirculant G.x4)`, `trCirculant G.x2`, `trCirculant G.x3`, `-(trCirculant G.x2)` sit at block positions (1,2), (1,3), (2,1), (2,3), (3,1), (3,2) — so `x2`, `x3` and `x4` all appear this way. The diagonal is always `gsA G = circulant G.x1`, and the first block row and column use `gs* G * reversalMatrix n` instead."
 ---
 
 ## Plain English

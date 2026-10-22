@@ -5,7 +5,7 @@ summary: "At the first 1-indexed position where `Z` *agrees* with its mirror ima
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "The test is inverted relative to [Canonical2](#/node/Canonical2): the earlier indices must *disagree* with their mirrors (`zⱼ ≠ z_{n+1−j}`) and the index in question must *agree*. That is because Z is normalized by negate-and-reverse, which turns agreement into disagreement."
+  - "The test is inverted relative to [Canonical2](#/node/Canonical2): the earlier indices must *disagree* with their mirrors (`zⱼ ≠ z_{n+1−j}`) and the index in question must *agree*. That is because Z is normalized by negate-and-reverse, which flips the entry at exactly the agreeing positions and leaves the disagreeing ones alone (`zAt_doNegRevZ`)."
   - "Vacuous when Z disagrees with its mirror everywhere — an 'anti-palindrome'."
   - "It constrains Z's first entry only through [Canonical1](#/node/Canonical1); nothing here mentions `zAt S n`, which is already forced to `-1`."
 quiz:
@@ -16,9 +16,9 @@ quiz:
     explain: "`(∀ j < i, zAt S j ≠ zAt S (n + 1 - j)) → zAt S i = zAt S (n + 1 - i) → zAt S i = 1`. The first *symmetric* index, not the first asymmetric one."
   - q: "Why is the test inverted compared with [Canonical2](#/node/Canonical2)?"
     type: choice
-    choices: ["a typo in the Lean", "because Z is normalized by negating *and* reversing, which flips the symmetry test", "because Z carries weight 2"]
+    choices: ["a typo in the Lean", "because Z is normalized by negating *and* reversing, which changes the entry at exactly the positions that agree with their mirror", "because Z carries weight 2"]
     answer: 1
-    explain: "Reversing alone would compare `zᵢ` with `z_{n+1−i}`; negating as well turns 'equal' into 'opposite'. The helper lemma is `zAt_doNegRevZ`, and `step4_condition4` is the step that uses it."
+    explain: "`zAt_doNegRevZ` gives `zAt S.doRevZ.doNegZ j = -(zAt S (n + 1 - j))`. So negate-and-reverse leaves the pattern of which positions agree with their mirror exactly as it was, and flips the entry at precisely the agreeing positions — which is why the scan looks for the first *agreeing* index. `step4_condition4` is the step that uses it."
   - q: "If `zAt S i ≠ zAt S (n + 1 - i)` for every `i`, does `Canonical4` hold?"
     type: choice
     choices: ["yes, vacuously", "no"]
@@ -40,8 +40,13 @@ Rule (iv). Same idea as [Canonical2](#/node/Canonical2), but reading the mirror 
 round: scan from the left until you hit a position that *matches* its mirror, and require that
 entry to be `+1`.
 
-The reason for the flip is the move used. Z is normalized by negate-and-reverse (`negZ` then
-`revZ`): the reversed-and-negated Z has `z'ᵢ = −z_{n+1−i}`, so where the original had
-`zᵢ = z_{n+1−i}` the new one has `z'ᵢ = −zᵢ`. Agreement is the invariant that move can toggle.
-Positions that disagree with their mirror are unaffected, so the scan has to skip over them —
-which is exactly what the first inner hypothesis does.
+The reason for the flip is the move used. Z is normalized by negate-and-reverse (`S.doRevZ.doNegZ`,
+so `revZ` then `negZ`): the new Z has `z'ᵢ = −z_{n+1−i}` (`zAt_doNegRevZ`). Work out what that does
+to the two kinds of position:
+
+- where the original *agreed* with its mirror (`zᵢ = z_{n+1−i}`), the new entry is `z'ᵢ = −zᵢ`;
+- where it *disagreed* (`z_{n+1−i} = −zᵢ`), the new entry is `z'ᵢ = zᵢ` — unchanged.
+
+So the pattern of agreements is itself untouched by the move, and what the move toggles is the
+entry at exactly the agreeing positions. Those are therefore the ones worth scanning for, and the
+disagreeing positions have to be skipped over — which is what the first inner hypothesis does.

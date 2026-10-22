@@ -5,7 +5,7 @@ summary: "`reverseFn a i = a ⟨n - 1 - i.1, _⟩` — the sequence with its ent
 review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
-  - "Index arithmetic is `Nat` subtraction, but the bound `i.1 < n` keeps `n - 1 - i.1` in range. This is the index map [revFin](#/node/revFin)."
+  - "Index arithmetic is `Nat` subtraction, but the bound `i.1 < n` keeps `n - 1 - i.1` in range. It is the same index map as [revFin](#/node/revFin), but written out here: the two are independent definitions in different files, and neither is defined in terms of the other."
   - "`lookupNat_reverseFn` needs the hypothesis `i < n` to relate it to [lookupNat](#/node/lookupNat) — out of range both sides are 0 but the stated form assumes in-range."
 quiz:
   - q: "What is entry `0` of `reverseFn a`?"
@@ -22,7 +22,7 @@ quiz:
     type: choice
     choices: ["yes, mathematically — and [revFin](#/node/revFin) is proved involutive", "no"]
     answer: 0
-    explain: "`revFin_involutive` is proved; the corresponding statement about `reverseFn` or `PmSeq.reverse` is not stated separately, which is part of why [Equivalent](#/node/Equivalent) is never shown symmetric."
+    explain: "`revFin_involutive` is proved for the index map `revFin` (a separate definition with the same formula); no corresponding statement about `reverseFn` or `PmSeq.reverse` is made anywhere, which is part of why [Equivalent](#/node/Equivalent) is never shown symmetric."
 ---
 
 ## Plain English

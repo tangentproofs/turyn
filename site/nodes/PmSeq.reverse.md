@@ -6,12 +6,13 @@ review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
   - "Carrier is [reverseFn](#/node/reverseFn) `s.data`, i.e. `fun i => s.data ⟨n - 1 - i.1, _⟩`; proof field is `AllPmOne_reverseFn s.pm`, which holds because every entry of the result is an entry of the original."
+  - "Nothing in the library proves `s.reverse.reverse = s`. It is true, but see [Equivalent](#/node/Equivalent) for why the absence matters."
 quiz:
   - q: "What is entry `i` of `s.reverse`?"
     type: choice
     choices: ["`s.data i`", "`s.data ⟨n - 1 - i.1, _⟩`", "`-(s.data i)`"]
     answer: 1
-    explain: "That is [reverseFn](#/node/reverseFn), built on [revFin](#/node/revFin)."
+    explain: "That is [reverseFn](#/node/reverseFn), which writes out the index map `i ↦ n - 1 - i` directly (the same formula as [revFin](#/node/revFin), but a separate definition)."
   - q: "Does reversing change any autocorrelation?"
     type: choice
     choices: ["no — `aperiodicAutocorr_reverseFn`", "yes", "only the lag-1 one"]

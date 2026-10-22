@@ -6,7 +6,7 @@ review: draft
 authors: ["claude (for @tangentstorm)"]
 caveats:
   - "Same `pm!` machinery as [tt6X](#/node/tt6X): length and ±1-ness are discharged by `decide` at elaboration."
-  - "X and Y have the same sum here (`-4` each) but different autocorrelations, so they are not interchangeable even though [Elementary.swap](#/node/Elementary) would allow exchanging them."
+  - "X and Y have the same sum here (`-4` each) but different autocorrelations (`N_X = 1, 2, 1, 0, 1` against `N_Y = 1, 0, 1, 2, 1`), so [Elementary.swap](#/node/Elementary) sends this quadruple to a genuinely different one — still Turyn-type, by `vanishing_swapXY`."
 quiz:
   - q: "What is `seqSum tt6Y.data`?"
     type: number
