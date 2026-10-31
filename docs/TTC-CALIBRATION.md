@@ -38,6 +38,33 @@ together (6 vs 3) is also a discrepancy. These are separate from the
 TTC question and need their own investigation before any of these
 modes can be trusted as a ground-truth oracle.
 
+**Update (2026-10-30): root causes found and fixed for `--wz=apart`.**
+`search --wz=apart --mdd-k=5 --all --threads=1` now reproduces
+`data/turyn-type-NN` exactly for n = 4…18 (n=16: 739/739, was 530–543;
+n=18: 675/675, was 429). Three independent bugs dropped solutions:
+
+1. radical's spectral conflict clause was attached to the watch lists
+   under the wrong literal polarity, so the Z-middle SAT returned
+   phase-dependent false UNSATs once `middle_n ≥ 8` turned the in-SAT
+   spectral constraint on (n ≥ 18 at k=5). `clear_learnt_clauses` had
+   the same inverted watch rebuild.
+2. `PhaseBContext.max_z` was hard-capped at 16 Z middles per
+   (boundary, W), and hitting the cap still exact-credited the boundary.
+   `--all` now uses `--max-z`; a first-solution search keeps 16 but the
+   boundary is marked timed out when the cap is hit.
+3. The XY stage stopped at the first (X, Y) per (Z, W, XY boundary);
+   `--all` now blocks each solution and re-solves until UNSAT (all
+   modes and the `XY_MDD=1` path).
+
+`together` and `cross` match the catalogue for n ≤ 12 before and after.
+Regression tests: `search_all_apart_matches_catalogue_*`,
+`z_middle_sat_finds_canonical_tt18_for_every_phase_seed`,
+`xy_enumeration_returns_every_completion_tt14`, and radical's
+`spectral_enumeration_matches_brute_force_for_all_seeds` /
+`clear_learnt_clauses_keeps_original_clauses_enforced`.
+To localize a future miss, set `TURYN_TRACE_TT="X Y Z W"` to one known
+solution; each stage logs what it did with it.
+
 So when this doc says "TTC is calibrated within ~10%" it means: TTC
 predictions track wall-clock to within ~10% on `--wz=apart` runs to
 `covered=1.0`. It does NOT claim apart's count of solutions equals

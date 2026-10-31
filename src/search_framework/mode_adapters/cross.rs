@@ -301,34 +301,46 @@ impl StageHandler<CrossPayload> for CrossEnumerateStage {
                             }
                             let x_bits = (code & ((1u64 << boundary_bits) - 1)) as u32;
                             let y_bits = (code >> boundary_bits) as u32;
-                            let (result, stats) = state.try_candidate(x_bits, y_bits);
-                            // XY timeout partial credit: each
-                            // timeout's `cover_micro ∈ [0, 1_000_000]`
-                            // is the fraction of this one XY
-                            // sub-cube the SAT solver actually
-                            // eliminated before the conflict
-                            // budget fired. Accumulate for the
-                            // current tuple; reset to 0 when the
-                            // tuple completes so finished tuples
-                            // are credited only by `tuples_done`.
-                            if matches!(result, XyTryResult::Timeout) {
-                                self.in_flight_cov_micro
-                                    .fetch_add(stats.cover_micro, Ordering::Relaxed);
-                            }
-                            if let XyTryResult::Sat(x, y) = result {
-                                if verify_tt(problem, &x, &y, &z_seq_clone, &w_seq_clone) {
-                                    if !continue_after_sat {
-                                        found.store(true, Ordering::Relaxed);
+                            loop {
+                                let (result, stats) = state.try_candidate(x_bits, y_bits);
+                                // XY timeout partial credit: each
+                                // timeout's `cover_micro ∈ [0, 1_000_000]`
+                                // is the fraction of this one XY
+                                // sub-cube the SAT solver actually
+                                // eliminated before the conflict
+                                // budget fired. Accumulate for the
+                                // current tuple; reset to 0 when the
+                                // tuple completes so finished tuples
+                                // are credited only by `tuples_done`.
+                                if matches!(result, XyTryResult::Timeout) {
+                                    self.in_flight_cov_micro
+                                        .fetch_add(stats.cover_micro, Ordering::Relaxed);
+                                }
+                                // --all: block each XY completion and re-solve so
+                                // every (X, Y) for this boundary is reported.
+                                let again =
+                                    continue_after_sat && matches!(result, XyTryResult::Sat(_, _));
+                                if let XyTryResult::Sat(x, y) = result {
+                                    if again {
+                                        state.block_solution(&x, &y);
                                     }
-                                    let _ = self.result_tx.send((
-                                        x,
-                                        y,
-                                        z_seq_clone.clone(),
-                                        w_seq_clone.clone(),
-                                    ));
-                                    if !continue_after_sat {
-                                        break;
+                                    if verify_tt(problem, &x, &y, &z_seq_clone, &w_seq_clone) {
+                                        if !continue_after_sat {
+                                            found.store(true, Ordering::Relaxed);
+                                        }
+                                        let _ = self.result_tx.send((
+                                            x,
+                                            y,
+                                            z_seq_clone.clone(),
+                                            w_seq_clone.clone(),
+                                        ));
+                                        if !continue_after_sat {
+                                            break;
+                                        }
                                     }
+                                }
+                                if !again {
+                                    break;
                                 }
                             }
                         }

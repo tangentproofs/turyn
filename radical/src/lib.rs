@@ -3305,11 +3305,11 @@ impl Solver {
             let l0 = self.clause_lits[start];
             let l1 = self.clause_lits[start + 1];
             if cm.len == 2 && self.config.bin_watch_fastpath {
-                self.bin_watches[lit_index(l0)].push((l1, ci as u32));
-                self.bin_watches[lit_index(l1)].push((l0, ci as u32));
+                self.bin_watches[lit_index(negate(l0))].push((l1, ci as u32));
+                self.bin_watches[lit_index(negate(l1))].push((l0, ci as u32));
             } else {
-                self.watches[lit_index(l0)].push((ci as u32, l1));
-                self.watches[lit_index(l1)].push((ci as u32, l0));
+                self.watches[lit_index(negate(l0))].push((ci as u32, l1));
+                self.watches[lit_index(negate(l1))].push((ci as u32, l0));
             }
         }
         self.conflicts = 0;
@@ -3811,6 +3811,10 @@ impl Solver {
                             let sv_lit = (sv + 1) as Lit;
                             cl.push(if spec.values[sv] > 0 { -sv_lit } else { sv_lit });
                         }
+                        // Watch the two most recently assigned literals so
+                        // the clause behaves like any learnt clause after the
+                        // backjump.
+                        cl.sort_by_key(|&l| std::cmp::Reverse(self.level[var_of(l)]));
                         let ci = self.clause_meta.len() as u32;
                         let cs = self.clause_lits.len();
                         let cn = cl.len();
@@ -3826,11 +3830,11 @@ impl Solver {
                             used: 0,
                         });
                         if cn == 2 && self.config.bin_watch_fastpath {
-                            self.bin_watches[lit_index(cl[0])].push((cl[1], ci));
-                            self.bin_watches[lit_index(cl[1])].push((cl[0], ci));
+                            self.bin_watches[lit_index(negate(cl[0]))].push((cl[1], ci));
+                            self.bin_watches[lit_index(negate(cl[1]))].push((cl[0], ci));
                         } else if cn >= 2 {
-                            self.watches[lit_index(cl[0])].push((ci, cl[1]));
-                            self.watches[lit_index(cl[1])].push((ci, cl[0]));
+                            self.watches[lit_index(negate(cl[0]))].push((ci, cl[1]));
+                            self.watches[lit_index(negate(cl[1]))].push((ci, cl[0]));
                         }
                         return Some(Reason::Clause(ci));
                     }
@@ -5579,6 +5583,116 @@ pub fn parse_dimacs(input: &str) -> Solver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `clear_learnt_clauses` rebuilds the watch lists; it used to index
+    /// them by the clause literal instead of its negation, so a clause was
+    /// only visited when a literal became *true* and violated clauses
+    /// went unnoticed.
+    #[test]
+    fn clear_learnt_clauses_keeps_original_clauses_enforced() {
+        let mut s = Solver::new();
+        s.add_clause([1, 2, 3]);
+        s.add_clause([-1, 4]);
+        s.clear_learnt_clauses();
+        assert_eq!(s.solve_with_assumptions(&[-1, -2, -3]), Some(false));
+        assert_eq!(s.solve_with_assumptions(&[1, -4]), Some(false));
+        assert_eq!(s.solve_with_assumptions(&[-1, -2]), Some(true));
+        assert_eq!(s.value(3), Some(true));
+    }
+
+    /// The spectral propagator's conflict clause used to be attached to
+    /// the watch lists under the wrong polarity, which made the solver
+    /// return phase-dependent false UNSATs. Enumerating every middle
+    /// under the spectral bound must give exactly the brute-force set,
+    /// for any phase seed.
+    #[test]
+    fn spectral_enumeration_matches_brute_force_for_all_seeds() {
+        let seq_len = 14usize;
+        let k = 3usize;
+        let mid = seq_len - 2 * k;
+        let nf = 32usize;
+        let target: Vec<i8> = "++-+++--+-+--+"
+            .bytes()
+            .map(|b| if b == b'+' { 1 } else { -1 })
+            .collect();
+        let mut boundary = target.clone();
+        for v in &mut boundary[k..seq_len - k] {
+            *v = 0;
+        }
+        let tables = SpectralTables::new(seq_len, k, nf);
+        // Same arithmetic as the propagator: f64 tables on the boundary,
+        // the f32 middle tables in the middle.
+        let power = |seq: &[i8], fi: usize| -> f64 {
+            let (mut re, mut im) = (0.0f64, 0.0f64);
+            for (p, &v) in seq.iter().enumerate() {
+                if p >= k && p < seq_len - k {
+                    re += v as f64 * tables.cos_table[(p - k) * nf + fi] as f64;
+                    im += v as f64 * tables.sin_table[(p - k) * nf + fi] as f64;
+                } else {
+                    re += v as f64 * tables.pos_cos[p * nf + fi];
+                    im += v as f64 * tables.pos_sin[p * nf + fi];
+                }
+            }
+            re * re + im * im
+        };
+        // Tightest bound the target meets, with a hair of slack for the
+        // f32 tables, so the feasible set is small but non-trivial.
+        let bound = (0..nf).map(|fi| power(&target, fi)).fold(0.0f64, f64::max) * (1.0 + 1e-6);
+        let mut want: Vec<Vec<i8>> = Vec::new();
+        for bits in 0..(1u32 << mid) {
+            let mut seq = boundary.clone();
+            for i in 0..mid {
+                seq[k + i] = if (bits >> i) & 1 == 1 { 1 } else { -1 };
+            }
+            if (0..nf).all(|fi| power(&seq, fi) <= bound) {
+                want.push(seq[k..seq_len - k].to_vec());
+            }
+        }
+        want.sort();
+        assert!(
+            want.len() >= 2,
+            "test instance too tight: {} feasible",
+            want.len()
+        );
+        for seed in 0..100u64 {
+            let mut s = Solver::new();
+            for v in 1..=mid as i32 {
+                s.add_clause([v, -v]);
+            }
+            s.spectral = Some(SpectralConstraint::from_tables(&tables, &boundary, bound));
+            let mut rng = seed.wrapping_mul(0x9e3779b97f4a7c15) | 1;
+            let mut got: Vec<Vec<i8>> = Vec::new();
+            loop {
+                let ph: Vec<bool> = (0..mid)
+                    .map(|_| {
+                        rng ^= rng << 13;
+                        rng ^= rng >> 7;
+                        rng ^= rng << 17;
+                        rng & 1 == 1
+                    })
+                    .collect();
+                s.set_phase(&ph);
+                if s.solve() != Some(true) {
+                    break;
+                }
+                let m: Vec<i8> = (1..=mid as i32)
+                    .map(|v| if s.value(v) == Some(true) { 1 } else { -1 })
+                    .collect();
+                let block: Vec<i32> = (1..=mid as i32)
+                    .map(|v| if m[v as usize - 1] == 1 { -v } else { v })
+                    .collect();
+                got.push(m);
+                s.reset();
+                s.add_clause(block);
+                assert!(got.len() <= 1 << mid);
+            }
+            got.sort();
+            assert_eq!(
+                got, want,
+                "seed {seed}: SAT enumeration differs from brute force"
+            );
+        }
+    }
 
     fn build_xor_quad_pb_no_gj_n26_solver(enable_xor: bool) -> Solver {
         let n = 26usize;

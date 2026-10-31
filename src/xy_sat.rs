@@ -1240,6 +1240,21 @@ pub(crate) fn xy_cover_micro(result: Option<bool>, decisions: u64, free_vars: u6
     }
 }
 
+/// Clause forbidding exactly the assignment (X, Y) over XY variables
+/// `1..=n` (X) and `n+1..=2n` (Y).
+pub(crate) fn block_xy_clause(n: usize, x: &PackedSeq, y: &PackedSeq) -> Vec<i32> {
+    let mut c = Vec::with_capacity(2 * n);
+    for i in 0..n {
+        let xv = (i + 1) as i32;
+        c.push(if x.get(i) == 1 { -xv } else { xv });
+    }
+    for i in 0..n {
+        let yv = (n + i + 1) as i32;
+        c.push(if y.get(i) == 1 { -yv } else { yv });
+    }
+    c
+}
+
 /// Per-(Z,W) prepared state for shared XY SAT solving. Built once per
 /// candidate via `SolveXyPerCandidate::new`, consulted via `try_candidate`
 /// for each XY boundary `(x_bits, y_bits)` encountered during the
@@ -1365,6 +1380,17 @@ impl SolveXyPerCandidate {
             term_state_buf,
             configs_tested: 0,
         })
+    }
+
+    /// Forbid one full (X, Y) assignment so the next `try_candidate`
+    /// returns a different completion (or UNSAT). The clause covers all
+    /// 2n X/Y variables, so it only removes this exact solution and is
+    /// valid for every later boundary tried on this solver. Callers
+    /// enumerating all solutions (`--all`) loop `try_candidate` +
+    /// `block_solution` until the result is not `Sat`.
+    pub(crate) fn block_solution(&mut self, x: &PackedSeq, y: &PackedSeq) {
+        self.solver.reset();
+        self.solver.add_clause(block_xy_clause(self.n, x, y));
     }
 
     /// Try one XY boundary `(x_bits, y_bits)`: run the GJ + lag pre-
@@ -1554,13 +1580,16 @@ pub(crate) fn try_candidate_via_mdd(
     pos_order: &[usize],
     conflict_limit: u64,
     forcings_out: Option<&mut Vec<(u16, u8, u32)>>,
-) -> (Option<(PackedSeq, PackedSeq)>, XyStats) {
+    // Enumerate every (X, Y) (block each and re-solve until UNSAT)
+    // instead of stopping at the first. Used by `--all`.
+    all: bool,
+) -> (Vec<(PackedSeq, PackedSeq)>, XyStats) {
     let n = problem.n;
     if !template.is_feasible(candidate) {
-        return (None, XyStats::default());
+        return (Vec::new(), XyStats::default());
     }
     let Some(equalities) = gj_candidate_equalities(n, candidate) else {
-        return (None, XyStats::default());
+        return (Vec::new(), XyStats::default());
     };
 
     // Same template clone as SolveXyPerCandidate::new.
@@ -1604,7 +1633,20 @@ pub(crate) fn try_candidate_via_mdd(
     if conflict_limit > 0 {
         solver.set_conflict_limit(conflict_limit);
     }
-    let result = solver.solve_with_assumptions(&[]);
+    let mut found: Vec<(PackedSeq, PackedSeq)> = Vec::new();
+    let mut result = solver.solve_with_assumptions(&[]);
+    while result == Some(true) {
+        let x = extract_seq(&solver, |i| (i + 1) as i32, n);
+        let y = extract_seq(&solver, |i| (n + i + 1) as i32, n);
+        let clause = block_xy_clause(n, &x, &y);
+        found.push((x, y));
+        if !all {
+            break;
+        }
+        solver.reset();
+        solver.add_clause(clause);
+        result = solver.solve_with_assumptions(&[]);
+    }
 
     let decisions = solver.num_decisions().saturating_sub(d0);
     let propagations = solver.num_propagations().saturating_sub(p0);
@@ -1627,13 +1669,5 @@ pub(crate) fn try_candidate_via_mdd(
         sink.extend(crate::mdd_pipeline::forcing_delta_triples(&solver, &[]));
     }
 
-    let xy = match result {
-        Some(true) => {
-            let x = extract_seq(&solver, |i| (i + 1) as i32, n);
-            let y = extract_seq(&solver, |i| (n + i + 1) as i32, n);
-            Some((x, y))
-        }
-        _ => None,
-    };
-    (xy, stats)
+    (found, stats)
 }
