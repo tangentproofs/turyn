@@ -25,6 +25,56 @@ use crate::stochastic::*;
 use crate::types::*;
 use crate::xy_sat::*;
 
+/// Debug replay hook: `TURYN_TRACE_TT="X Y Z W"` (±-strings of one known
+/// canonical solution) makes each pipeline stage report on stderr what it
+/// did with that solution's boundary, W, Z and XY boundary, so a missed
+/// solution can be localized to the first stage that drops it.
+pub(crate) struct TraceTarget {
+    pub(crate) x: Vec<i8>,
+    pub(crate) y: Vec<i8>,
+    pub(crate) z: Vec<i8>,
+    pub(crate) w: Vec<i8>,
+}
+
+impl TraceTarget {
+    pub(crate) fn bits(seq: &[i8], k: usize) -> u32 {
+        let l = seq.len();
+        let mut b = 0u32;
+        for i in 0..k {
+            if seq[i] > 0 {
+                b |= 1 << i;
+            }
+            if seq[l - k + i] > 0 {
+                b |= 1 << (k + i);
+            }
+        }
+        b
+    }
+    pub(crate) fn zw_match(&self, k: usize, z_bits: u32, w_bits: u32) -> bool {
+        self.z.len() > 2 * k && Self::bits(&self.z, k) == z_bits && Self::bits(&self.w, k) == w_bits
+    }
+}
+
+pub(crate) fn trace_tt() -> Option<&'static TraceTarget> {
+    static T: std::sync::OnceLock<Option<TraceTarget>> = std::sync::OnceLock::new();
+    T.get_or_init(|| {
+        let s = std::env::var("TURYN_TRACE_TT").ok()?;
+        let p =
+            |t: &str| -> Vec<i8> { t.bytes().map(|b| if b == b'+' { 1 } else { -1 }).collect() };
+        let v: Vec<&str> = s.split_whitespace().collect();
+        if v.len() != 4 {
+            return None;
+        }
+        Some(TraceTarget {
+            x: p(v[0]),
+            y: p(v[1]),
+            z: p(v[2]),
+            w: p(v[3]),
+        })
+    })
+    .as_ref()
+}
+
 /// Produce a `(decision_level, PropKind as u8, count)` list for the
 /// forced literals attributable to `solver` since `baseline` was
 /// snapshotted. `baseline` is typically `solver.propagations_by_kind_level().to_vec()`
@@ -349,7 +399,12 @@ pub(crate) struct PhaseBContext {
     pub(crate) middle_n: usize,
     pub(crate) middle_m: usize,
     pub(crate) max_bnd_sum: i32,
+    /// Cap on Z middles per (boundary, W) in SolveZ. Hitting it marks
+    /// the boundary timed out (never exact-credited).
     pub(crate) max_z: usize,
+    /// (W, Z) pairs per SolveWZ attempt before the item is re-queued
+    /// with its blocking clauses (deferral, not a drop).
+    pub(crate) wz_batch: usize,
     pub(crate) individual_bound: f64,
     pub(crate) pair_bound: f64,
     pub(crate) theta: usize,
@@ -687,6 +742,14 @@ pub(crate) fn process_boundary(
             candidate_tuples.push(ctx.tuples[i]);
         }
     }
+    if let Some(tt) = trace_tt() {
+        if tt.zw_match(ctx.k, bnd.z_bits, bnd.w_bits) {
+            eprintln!(
+                "TRACE_TT bnd: z_bits={} w_bits={} candidate_tuples={:?}",
+                bnd.z_bits, bnd.w_bits, candidate_tuples
+            );
+        }
+    }
     if candidate_tuples.is_empty() {
         metrics.stage_exit[0].fetch_add(1, AtomicOrdering::Relaxed);
         return Vec::new();
@@ -767,6 +830,14 @@ pub(crate) fn process_solve_w(
     if trace_w {
         eprintln!("TRACE: SolveW for target boundary, |σ_W|={}", sw.tuple.w);
     }
+    let tr_w = trace_tt().filter(|t| t.zw_match(k, sw.z_bits, sw.w_bits));
+    if let Some(t) = tr_w {
+        eprintln!(
+            "TRACE_TT solve_w: enter tuples={:?} target_w_sum={}",
+            sw.candidate_tuples,
+            t.w.iter().map(|&v| v as i32).sum::<i32>()
+        );
+    }
     let (w_prefix, w_suffix) = expand_boundary_bits(sw.w_bits, k);
     let mut w_boundary = vec![0i8; m];
     w_boundary[..k].copy_from_slice(&w_prefix);
@@ -778,6 +849,9 @@ pub(crate) fn process_solve_w(
     // all bail here look like they never run at all in telemetry.
     let rule_v_state = sat_z_middle::check_w_boundary_rule_v(m, k, &w_boundary);
     if rule_v_state == sat_z_middle::BoundaryRuleState::ViolatedAtBoundary {
+        if tr_w.is_some() {
+            eprintln!("TRACE_TT solve_w: DROPPED by rule (v) at boundary");
+        }
         metrics.stage_exit[1].fetch_add(1, AtomicOrdering::Relaxed);
         return Vec::new();
     }
@@ -805,6 +879,12 @@ pub(crate) fn process_solve_w(
         cs.sort_unstable();
         cs
     };
+    if let Some(_) = tr_w {
+        eprintln!(
+            "TRACE_TT solve_w: w_counts={:?} middle_m={} rule_v={:?}",
+            w_counts, ctx.middle_m, rule_v_state
+        );
+    }
     if w_counts.is_empty() {
         metrics.stage_exit[1].fetch_add(1, AtomicOrdering::Relaxed);
         return Vec::new();
@@ -847,9 +927,16 @@ pub(crate) fn process_solve_w(
                     if trace_w {
                         trace_w_total += 1;
                     }
+                    let is_tw = tr_w.map_or(false, |t| t.w == w_vals);
+                    if is_tw {
+                        eprintln!("TRACE_TT solve_w: target W enumerated (brute)");
+                    }
                     if sat_z_middle::check_w_boundary_rule_v(m, m, &w_vals)
                         == sat_z_middle::BoundaryRuleState::ViolatedAtBoundary
                     {
+                        if is_tw {
+                            eprintln!("TRACE_TT solve_w: target W DROPPED by rule (v)");
+                        }
                         return true;
                     }
                     if crate::spectrum::spectrum_into_if_ok(
@@ -859,6 +946,9 @@ pub(crate) fn process_solve_w(
                         fft_buf_w,
                         &mut spec_buf,
                     ) {
+                        if is_tw {
+                            eprintln!("TRACE_TT solve_w: target W passed spectral -> SolveZ");
+                        }
                         if trace_w {
                             trace_w_pass += 1;
                         }
@@ -888,6 +978,9 @@ pub(crate) fn process_solve_w(
                             candidate_tuples: narrowed,
                         }));
                     } else {
+                        if is_tw {
+                            eprintln!("TRACE_TT solve_w: target W DROPPED by spectral filter");
+                        }
                         metrics
                             .flow_w_spec_fail
                             .fetch_add(1, AtomicOrdering::Relaxed);
@@ -964,6 +1057,10 @@ pub(crate) fn process_solve_w(
                 break;
             }
             if w_iter_count >= max_w_per_boundary {
+                // Cap hit with W middles possibly left: report it as
+                // incomplete rather than a clean closure.
+                metrics.flow_w_timeout.fetch_add(1, AtomicOrdering::Relaxed);
+                *timed_out = true;
                 break;
             }
             w_iter_count += 1;
@@ -1021,6 +1118,10 @@ pub(crate) fn process_solve_w(
             w_solver.reset();
             w_solver.add_clause(w_block);
 
+            let is_tw = tr_w.map_or(false, |t| t.w == w_vals);
+            if is_tw {
+                eprintln!("TRACE_TT solve_w: target W found by SAT (iter {w_iter_count})");
+            }
             let w_spectrum = match crate::spectrum::spectrum_if_ok(
                 &w_vals,
                 spectral_w,
@@ -1029,6 +1130,9 @@ pub(crate) fn process_solve_w(
             ) {
                 Some(s) => s,
                 None => {
+                    if is_tw {
+                        eprintln!("TRACE_TT solve_w: target W DROPPED by spectral filter");
+                    }
                     metrics
                         .flow_w_spec_fail
                         .fetch_add(1, AtomicOrdering::Relaxed);
@@ -1099,6 +1203,13 @@ pub(crate) fn process_solve_w(
     if !w_found_any && !*timed_out {
         metrics.flow_w_unsat.fetch_add(1, AtomicOrdering::Relaxed);
     }
+    if tr_w.is_some() {
+        eprintln!(
+            "TRACE_TT solve_w: exit emitted={} timed_out={}",
+            out_batch.len(),
+            *timed_out
+        );
+    }
     if trace_w {
         eprintln!(
             "TRACE: SolveW done: {} W middles checked, {} passed spectral",
@@ -1158,7 +1269,14 @@ pub(crate) fn process_solve_z(
         };
     }
 
+    let tr_z = trace_tt().filter(|t| t.zw_match(k, sz.z_bits, sz.w_bits) && t.w == sz.w_vals);
     let rule_iv_state = sat_z_middle::check_z_boundary_rule_iv(n, k, &z_boundary);
+    if tr_z.is_some() {
+        eprintln!(
+            "TRACE_TT solve_z: enter tuples={:?} rule_iv={:?}",
+            sz.candidate_tuples, rule_iv_state
+        );
+    }
     if rule_iv_state == sat_z_middle::BoundaryRuleState::ViolatedAtBoundary {
         // Rule (iv) rejects at the boundary: stage 2 is logically
         // done for this `(Z, W)` pair, so credit the stage exit just
@@ -1188,6 +1306,12 @@ pub(crate) fn process_solve_z(
         cs.sort_unstable();
         cs
     };
+    if tr_z.is_some() {
+        eprintln!(
+            "TRACE_TT solve_z: z_counts={:?} middle_n={}",
+            z_counts, ctx.middle_n
+        );
+    }
     if z_counts.is_empty() {
         metrics.stage_exit[2].fetch_add(1, AtomicOrdering::Relaxed);
         return;
@@ -1335,6 +1459,10 @@ pub(crate) fn process_solve_z(
             break;
         }
         if z_count >= ctx.max_z {
+            // Cap hit with Z middles possibly left: not a clean
+            // closure, so the boundary must not be exact-credited.
+            metrics.flow_z_timeout.fetch_add(1, AtomicOrdering::Relaxed);
+            *timed_out = true;
             break;
         }
         let z_phases: Vec<bool> = (0..ctx.middle_n)
@@ -1399,6 +1527,10 @@ pub(crate) fn process_solve_z(
             z_solver.add_clause(z_block);
         }
 
+        let is_tz = tr_z.map_or(false, |t| t.z == z_vals);
+        if is_tz {
+            eprintln!("TRACE_TT solve_z: target Z found by SAT (#{z_count})");
+        }
         crate::spectrum::compute_spectrum_into(
             &z_vals,
             spectral_z,
@@ -1415,6 +1547,9 @@ pub(crate) fn process_solve_z(
                 metrics
                     .flow_z_pair_fail
                     .fetch_add(1, AtomicOrdering::Relaxed);
+                if is_tz {
+                    eprintln!("TRACE_TT solve_z: target Z DROPPED by pair spectral filter");
+                }
                 if trace_z {
                     eprintln!("TRACE:   Z solution #{} FAILED pair check", z_count);
                 }
@@ -1461,6 +1596,7 @@ pub(crate) fn process_solve_z(
                 // adapter's `StageOutcome::forcings` covers the
                 // inline XY work, not just the outer z_solver.
                 Some(forcings_out),
+                ctx.continue_after_sat,
             );
             metrics.stage_enter[3].fetch_add(1, AtomicOrdering::Relaxed);
             metrics
@@ -1480,18 +1616,16 @@ pub(crate) fn process_solve_z(
             metrics
                 .flow_xy_free_sum
                 .fetch_add(stats.free_vars, AtomicOrdering::Relaxed);
-            match xy_res {
-                Some((x, y)) => {
-                    metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed);
-                    if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
-                        if !ctx.continue_after_sat {
-                            ctx.found.store(true, AtomicOrdering::Relaxed);
-                        }
-                        let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
+            if xy_res.is_empty() {
+                metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed);
+            }
+            for (x, y) in xy_res {
+                metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed);
+                if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
+                    if !ctx.continue_after_sat {
+                        ctx.found.store(true, AtomicOrdering::Relaxed);
                     }
-                }
-                None => {
-                    metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed);
+                    let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
                 }
             }
         } else if let Some(mut state) =
@@ -1517,6 +1651,7 @@ pub(crate) fn process_solve_z(
             let xy_plk0: Vec<[u64; radical::PropKind::COUNT]> =
                 state.solver.propagations_by_kind_level().to_vec();
             let (xy_root, xy_nodes) = resolve_xy_graph(&sz.xy_graph, &ctx.mdd.nodes);
+            let mut tr_xy_seen = false;
             walk_xy_sub_mdd(
                 xy_root,
                 0,
@@ -1531,6 +1666,15 @@ pub(crate) fn process_solve_z(
                 &mut |x_bits, y_bits| {
                     if !ctx.continue_after_sat && ctx.found.load(AtomicOrdering::Relaxed) {
                         return;
+                    }
+                    let is_txy = is_tz
+                        && tr_z.map_or(false, |t| {
+                            TraceTarget::bits(&t.x, k) == x_bits
+                                && TraceTarget::bits(&t.y, k) == y_bits
+                        });
+                    if is_txy {
+                        tr_xy_seen = true;
+                        eprintln!("TRACE_TT xy: target XY boundary reached");
                     }
                     if let Some((fx, fy)) = ctx.outfix_xy {
                         if x_bits != fx || y_bits != fy {
@@ -1561,6 +1705,9 @@ pub(crate) fn process_solve_z(
                             )
                         });
                         if !ext_ok {
+                            if is_txy {
+                                eprintln!("TRACE_TT xy: target DROPPED by mdd-extend check");
+                            }
                             metrics
                                 .extensions_pruned
                                 .fetch_add(1, AtomicOrdering::Relaxed);
@@ -1568,49 +1715,73 @@ pub(crate) fn process_solve_z(
                         }
                     }
                     metrics.stage_enter[3].fetch_add(1, AtomicOrdering::Relaxed);
-                    let (result, stats) = state.try_candidate(x_bits, y_bits);
-                    metrics
-                        .items_completed
-                        .fetch_add(1, AtomicOrdering::Relaxed);
-                    metrics.stage_exit[3].fetch_add(1, AtomicOrdering::Relaxed);
-                    match &result {
-                        XyTryResult::Sat(_, _) => {
-                            metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed);
+                    loop {
+                        let (result, stats) = state.try_candidate(x_bits, y_bits);
+                        if is_txy {
+                            eprintln!(
+                                "TRACE_TT xy: try_candidate -> {}",
+                                match &result {
+                                    XyTryResult::Sat(_, _) => "Sat",
+                                    XyTryResult::Unsat => "Unsat",
+                                    XyTryResult::Pruned => "Pruned",
+                                    XyTryResult::Timeout => "Timeout",
+                                }
+                            );
                         }
-                        XyTryResult::Unsat | XyTryResult::Pruned => {
-                            metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed);
-                        }
-                        XyTryResult::Timeout => {
-                            metrics
-                                .flow_xy_timeout
-                                .fetch_add(1, AtomicOrdering::Relaxed);
-                            metrics
-                                .flow_xy_timeout_cov_micro
-                                .fetch_add(stats.cover_micro, AtomicOrdering::Relaxed);
-                            *cov_micro_out = cov_micro_out.saturating_add(stats.cover_micro);
-                        }
-                    };
-                    if !matches!(result, XyTryResult::Pruned) {
-                        metrics.flow_xy_solves.fetch_add(1, AtomicOrdering::Relaxed);
                         metrics
-                            .flow_xy_decisions
-                            .fetch_add(stats.decisions, AtomicOrdering::Relaxed);
-                        metrics
-                            .flow_xy_propagations
-                            .fetch_add(stats.propagations, AtomicOrdering::Relaxed);
-                        metrics
-                            .flow_xy_root_forced
-                            .fetch_add(stats.vars_pre_forced, AtomicOrdering::Relaxed);
-                        metrics
-                            .flow_xy_free_sum
-                            .fetch_add(stats.free_vars, AtomicOrdering::Relaxed);
-                    }
-                    if let XyTryResult::Sat(x, y) = result {
-                        if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
-                            if !ctx.continue_after_sat {
-                                ctx.found.store(true, AtomicOrdering::Relaxed);
+                            .items_completed
+                            .fetch_add(1, AtomicOrdering::Relaxed);
+                        metrics.stage_exit[3].fetch_add(1, AtomicOrdering::Relaxed);
+                        match &result {
+                            XyTryResult::Sat(_, _) => {
+                                metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed);
                             }
-                            let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
+                            XyTryResult::Unsat | XyTryResult::Pruned => {
+                                metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed);
+                            }
+                            XyTryResult::Timeout => {
+                                metrics
+                                    .flow_xy_timeout
+                                    .fetch_add(1, AtomicOrdering::Relaxed);
+                                metrics
+                                    .flow_xy_timeout_cov_micro
+                                    .fetch_add(stats.cover_micro, AtomicOrdering::Relaxed);
+                                *cov_micro_out = cov_micro_out.saturating_add(stats.cover_micro);
+                            }
+                        };
+                        if !matches!(result, XyTryResult::Pruned) {
+                            metrics.flow_xy_solves.fetch_add(1, AtomicOrdering::Relaxed);
+                            metrics
+                                .flow_xy_decisions
+                                .fetch_add(stats.decisions, AtomicOrdering::Relaxed);
+                            metrics
+                                .flow_xy_propagations
+                                .fetch_add(stats.propagations, AtomicOrdering::Relaxed);
+                            metrics
+                                .flow_xy_root_forced
+                                .fetch_add(stats.vars_pre_forced, AtomicOrdering::Relaxed);
+                            metrics
+                                .flow_xy_free_sum
+                                .fetch_add(stats.free_vars, AtomicOrdering::Relaxed);
+                        }
+                        // In --all mode one (Z, W, XY-boundary) can have several
+                        // XY middles; block each solution and re-solve until UNSAT
+                        // so none is dropped.
+                        let again =
+                            ctx.continue_after_sat && matches!(result, XyTryResult::Sat(_, _));
+                        if let XyTryResult::Sat(x, y) = result {
+                            if again {
+                                state.block_solution(&x, &y);
+                            }
+                            if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
+                                if !ctx.continue_after_sat {
+                                    ctx.found.store(true, AtomicOrdering::Relaxed);
+                                }
+                                let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
+                            }
+                        }
+                        if !again {
+                            break;
                         }
                     }
                 },
@@ -1620,13 +1791,25 @@ pub(crate) fn process_solve_z(
             // reflects the actual inline XY work, not just the
             // outer z_solver. See `docs/TELEMETRY.md` §4
             // attribution rule.
+            if is_tz && !tr_xy_seen {
+                eprintln!("TRACE_TT xy: target XY boundary NEVER visited by XY sub-MDD walk");
+            }
             forcings_out.extend(forcing_delta_triples(&state.solver, &xy_plk0));
             warm.phase = Some(state.solver.get_phase());
         } else {
+            if is_tz {
+                eprintln!("TRACE_TT xy: SolveXyPerCandidate::new returned None (prep fail)");
+            }
             metrics
                 .flow_z_prep_fail
                 .fetch_add(1, AtomicOrdering::Relaxed);
         }
+    }
+    if tr_z.is_some() {
+        eprintln!(
+            "TRACE_TT solve_z: exit z_count={z_count} max_z={} timed_out={}",
+            ctx.max_z, *timed_out
+        );
     }
     if trace_z {
         let z_sf = metrics.flow_z_spec_fail.load(AtomicOrdering::Relaxed);
@@ -2084,7 +2267,7 @@ pub(crate) fn process_solve_wz(
         if !ctx.continue_after_sat && ctx.found.load(AtomicOrdering::Relaxed) {
             break;
         }
-        if wz_count >= ctx.max_z {
+        if wz_count >= ctx.wz_batch {
             more_possible = true;
             break;
         }
@@ -2300,55 +2483,69 @@ pub(crate) fn process_solve_wz(
                         }
                     }
                     // Snapshot search stats around the SAT call.
-                    let xy_d0 = xy_solver.num_decisions();
-                    let xy_p0 = xy_solver.num_propagations();
-                    let xy_l0 = xy_solver.num_level0_vars();
-                    let xy_nv = xy_solver.num_vars();
-                    let result = xy_solver.solve_with_assumptions(&assumptions);
-                    metrics
-                        .items_completed
-                        .fetch_add(1, AtomicOrdering::Relaxed);
-                    metrics.stage_exit[3].fetch_add(1, AtomicOrdering::Relaxed);
+                    loop {
+                        let xy_d0 = xy_solver.num_decisions();
+                        let xy_p0 = xy_solver.num_propagations();
+                        let xy_l0 = xy_solver.num_level0_vars();
+                        let xy_nv = xy_solver.num_vars();
+                        let result = xy_solver.solve_with_assumptions(&assumptions);
+                        metrics
+                            .items_completed
+                            .fetch_add(1, AtomicOrdering::Relaxed);
+                        metrics.stage_exit[3].fetch_add(1, AtomicOrdering::Relaxed);
 
-                    let xy_decisions = xy_solver.num_decisions().saturating_sub(xy_d0);
-                    let xy_propagations = xy_solver.num_propagations().saturating_sub(xy_p0);
-                    let xy_pre_forced = xy_l0 as u64;
-                    let xy_free_vars = xy_nv.saturating_sub(xy_l0) as u64;
-                    metrics.flow_xy_solves.fetch_add(1, AtomicOrdering::Relaxed);
-                    metrics
-                        .flow_xy_decisions
-                        .fetch_add(xy_decisions, AtomicOrdering::Relaxed);
-                    metrics
-                        .flow_xy_propagations
-                        .fetch_add(xy_propagations, AtomicOrdering::Relaxed);
-                    metrics
-                        .flow_xy_root_forced
-                        .fetch_add(xy_pre_forced, AtomicOrdering::Relaxed);
-                    metrics
-                        .flow_xy_free_sum
-                        .fetch_add(xy_free_vars, AtomicOrdering::Relaxed);
+                        let xy_decisions = xy_solver.num_decisions().saturating_sub(xy_d0);
+                        let xy_propagations = xy_solver.num_propagations().saturating_sub(xy_p0);
+                        let xy_pre_forced = xy_l0 as u64;
+                        let xy_free_vars = xy_nv.saturating_sub(xy_l0) as u64;
+                        metrics.flow_xy_solves.fetch_add(1, AtomicOrdering::Relaxed);
+                        metrics
+                            .flow_xy_decisions
+                            .fetch_add(xy_decisions, AtomicOrdering::Relaxed);
+                        metrics
+                            .flow_xy_propagations
+                            .fetch_add(xy_propagations, AtomicOrdering::Relaxed);
+                        metrics
+                            .flow_xy_root_forced
+                            .fetch_add(xy_pre_forced, AtomicOrdering::Relaxed);
+                        metrics
+                            .flow_xy_free_sum
+                            .fetch_add(xy_free_vars, AtomicOrdering::Relaxed);
 
-                    match result {
-                        Some(true) => metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed),
-                        Some(false) => metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed),
-                        None => {
-                            let cover = xy_cover_micro(result, xy_decisions, xy_free_vars);
-                            metrics
-                                .flow_xy_timeout_cov_micro
-                                .fetch_add(cover, AtomicOrdering::Relaxed);
-                            *cov_micro_out = cov_micro_out.saturating_add(cover);
-                            metrics
-                                .flow_xy_timeout
-                                .fetch_add(1, AtomicOrdering::Relaxed)
-                        }
-                    };
-                    if result == Some(true) {
-                        let (x, y) = template.extract_xy(&xy_solver);
-                        if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
-                            if !ctx.continue_after_sat {
-                                ctx.found.store(true, AtomicOrdering::Relaxed);
+                        match result {
+                            Some(true) => metrics.flow_xy_sat.fetch_add(1, AtomicOrdering::Relaxed),
+                            Some(false) => {
+                                metrics.flow_xy_unsat.fetch_add(1, AtomicOrdering::Relaxed)
                             }
-                            let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
+                            None => {
+                                let cover = xy_cover_micro(result, xy_decisions, xy_free_vars);
+                                metrics
+                                    .flow_xy_timeout_cov_micro
+                                    .fetch_add(cover, AtomicOrdering::Relaxed);
+                                *cov_micro_out = cov_micro_out.saturating_add(cover);
+                                metrics
+                                    .flow_xy_timeout
+                                    .fetch_add(1, AtomicOrdering::Relaxed)
+                            }
+                        };
+                        // --all: block each XY completion and re-solve so every
+                        // (X, Y) under this boundary is reported.
+                        let again = ctx.continue_after_sat && result == Some(true);
+                        if result == Some(true) {
+                            let (x, y) = template.extract_xy(&xy_solver);
+                            if again {
+                                xy_solver.reset();
+                                xy_solver.add_clause(crate::xy_sat::block_xy_clause(n, &x, &y));
+                            }
+                            if verify_tt(ctx.problem, &x, &y, &z_seq, &w_seq) {
+                                if !ctx.continue_after_sat {
+                                    ctx.found.store(true, AtomicOrdering::Relaxed);
+                                }
+                                let _ = result_tx.send((x, y, z_seq.clone(), w_seq.clone()));
+                            }
+                        }
+                        if !again {
+                            break;
                         }
                     }
                 },
@@ -2528,7 +2725,15 @@ pub(crate) fn build_phase_b_context(
         middle_n,
         middle_m,
         max_bnd_sum,
-        max_z: cfg.max_z.min(16),
+        // `--all` must see every Z; a first-solution search keeps the
+        // old breadth-friendly cap of 16 (the boundary is then marked
+        // timed out, not exact-credited).
+        max_z: if cfg.continue_after_sat || cfg.bench_cover_log2.is_some() {
+            cfg.max_z
+        } else {
+            cfg.max_z.min(16)
+        },
+        wz_batch: cfg.max_z.min(16),
         individual_bound: problem.spectral_bound(),
         pair_bound: cfg.max_spectral.unwrap_or(problem.spectral_bound()),
         theta: cfg.theta_samples,

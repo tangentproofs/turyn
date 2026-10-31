@@ -4264,4 +4264,293 @@ mod tests {
             XyTryResult::Timeout => panic!("n={n}: try_candidate timed out"),
         }
     }
+
+    /// Two catalogue TT(14) rows share Z, W and the k=5 XY boundary and
+    /// differ only in the XY middle. `try_candidate` returns one SAT
+    /// model per boundary, so `--all` used to report only one of them;
+    /// looping `try_candidate` + `block_solution` must yield both.
+    #[test]
+    fn xy_enumeration_returns_every_completion_tt14() {
+        let n = 14;
+        let k = 5;
+        let problem = Problem::new(n);
+        let parse = |s: &str| -> Vec<i8> { s.bytes().map(|b| if b == b'+' { 1 } else { -1 }).collect() };
+        let z = PackedSeq::from_values(&parse("++-++++-+-+++-"));
+        let w = PackedSeq::from_values(&parse("+++-+----++--"));
+        let want = [
+            ("++-+-++--+--++", "++-+------++-+"),
+            ("++-+-----+--++", "++-+---++-++-+"),
+        ];
+        let bits = |s: &[i8]| -> u32 {
+            let l = s.len();
+            (0..k).fold(0u32, |b, i| {
+                b | (((s[i] == 1) as u32) << i) | (((s[l - k + i] == 1) as u32) << (k + i))
+            })
+        };
+        let (x_bits, y_bits) = (bits(&parse(want[0].0)), bits(&parse(want[0].1)));
+        for (x, y) in &want {
+            assert_eq!((bits(&parse(x)), bits(&parse(y))), (x_bits, y_bits));
+        }
+        let mut zw = vec![0i32; n];
+        for s in 1..n {
+            zw[s] = 2 * z.autocorrelation(s) + 2 * if s < n - 1 { w.autocorrelation(s) } else { 0 };
+        }
+        let candidate = CandidateZW { zw_autocorr: zw };
+        let tuple = SumTuple { x: 2, y: 2, z: 6, w: 1 };
+        let template = SatXYTemplate::build(problem, tuple, &radical::SolverConfig::default())
+            .expect("template should build");
+        let mut state = SolveXyPerCandidate::new(problem, &candidate, &template, k)
+            .expect("SolveXyPerCandidate::new should succeed");
+        let mut found: Vec<(String, String)> = Vec::new();
+        loop {
+            match state.try_candidate(x_bits, y_bits).0 {
+                XyTryResult::Sat(x, y) => {
+                    assert!(verify_tt(problem, &x, &y, &z, &w), "non-solution returned");
+                    state.block_solution(&x, &y);
+                    found.push((x.as_string(), y.as_string()));
+                    assert!(found.len() <= 16, "blocking clause did not take effect");
+                }
+                XyTryResult::Unsat => break,
+                other => panic!("unexpected XY result {}", matches!(other, XyTryResult::Timeout)),
+            }
+        }
+        found.sort();
+        let mut want: Vec<(String, String)> =
+            want.iter().map(|(x, y)| (x.to_string(), y.to_string())).collect();
+        want.sort();
+        assert_eq!(found, want);
+    }
+
+    /// End-to-end completeness gate: `--wz=apart --all` must report
+    /// exactly the canonical solutions in `data/turyn-type-NN`.
+    /// n=14 covers the multi-completion XY case; n=16 also covers the
+    /// old silent `max_z=16` cap on Z middles per (boundary, W), which
+    /// dropped ~26% of TT(16).
+    fn search_all_matches_catalogue(n: usize, mode: &str) {
+        use std::collections::BTreeSet;
+        use std::process::Command;
+        let exe = format!("{}/target/release/turyn", env!("CARGO_MANIFEST_DIR"));
+        let out = Command::new(exe)
+            .args([
+                "search",
+                &format!("--n={n}"),
+                &format!("--wz={mode}"),
+                "--mdd-k=5",
+                "--all",
+                "--threads=1",
+            ])
+            .output()
+            .expect("turyn binary should run");
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        // Strip ANSI colour codes, then pull the X/Y/Z/W =: '...' lines.
+        let mut plain = String::with_capacity(text.len());
+        let mut it = text.chars().peekable();
+        while let Some(c) = it.next() {
+            if c == '\x1b' {
+                for d in it.by_ref() {
+                    if d == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                plain.push(c);
+            }
+        }
+        let grab = |tag: &str, line: &str| -> Option<String> {
+            let rest = line.trim_start().strip_prefix(tag)?.trim_start().strip_prefix('\'')?;
+            Some(rest.split('\'').next()?.to_string())
+        };
+        let lines: Vec<&str> = plain.lines().collect();
+        let mut got: BTreeSet<(String, String, String, String)> = BTreeSet::new();
+        for i in 0..lines.len().saturating_sub(3) {
+            if let (Some(x), Some(y), Some(z), Some(w)) = (
+                grab("X =:", lines[i]),
+                grab("Y =:", lines[i + 1]),
+                grab("Z =:", lines[i + 2]),
+                grab("W =:", lines[i + 3]),
+            ) {
+                got.insert((x, y, z, w));
+            }
+        }
+        let path = format!("{}/data/turyn-type-{:02}", env!("CARGO_MANIFEST_DIR"), n);
+        let want: BTreeSet<(String, String, String, String)> = std::fs::read_to_string(&path)
+            .unwrap()
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(|row| decode_kharaghani_hex(row, n))
+            .collect();
+        let missing: Vec<_> = want.difference(&got).take(5).collect();
+        let extra: Vec<_> = got.difference(&want).take(5).collect();
+        assert!(
+            missing.is_empty() && extra.is_empty(),
+            "n={n} --wz={mode}: found {} of {} catalogue solutions; missing e.g. {missing:?}; extra e.g. {extra:?}",
+            got.intersection(&want).count(),
+            want.len()
+        );
+    }
+
+    #[test]
+    fn search_all_apart_matches_catalogue_n4_to_n14() {
+        for n in [4, 6, 8, 10, 12, 14] {
+            search_all_matches_catalogue(n, "apart");
+        }
+    }
+
+    #[test]
+    #[ignore = "slow (~20 s)"]
+    fn search_all_apart_matches_catalogue_n16() {
+        search_all_matches_catalogue(16, "apart");
+    }
+
+    /// Replica of SolveZ's Z-middle solver (spectral + quad-PB lag ranges
+    /// + PbSetEq counts + rule (iv)) for one known (Z, W). Enumerates all Z
+    /// middles under a given phase seed; returns the set found.
+    fn z_middle_enumerate(z_str: &str, w_str: &str, k: usize, z_counts: &[u32], seed: u64, spec_on: bool, qpb_on: bool) -> (Vec<Vec<i8>>, bool) {
+        let parse = |s: &str| -> Vec<i8> { s.bytes().map(|b| if b == b'+' { 1 } else { -1 }).collect() };
+        let z = parse(z_str);
+        let w = parse(w_str);
+        let n = z.len();
+        let m = n - 1;
+        let middle_n = n - 2 * k;
+        let problem = Problem::new(n);
+        let pair_bound = problem.spectral_bound();
+        let mut z_boundary = vec![0i8; n];
+        z_boundary[..k].copy_from_slice(&z[..k]);
+        z_boundary[n - k..].copy_from_slice(&z[n - k..]);
+        let tmpl = sat_z_middle::LagTemplate::new(n, k);
+        let mut solver = tmpl.build_base_solver_quad_pb_pb_set(middle_n, z_counts);
+        let prep = sat_z_middle::ZBoundaryPrep::new(&tmpl, middle_n, &z_boundary);
+        if spec_on {
+            let ztab = radical::SpectralTables::new(n, k, SPECTRAL_FREQS);
+            let nf = ztab.num_freqs;
+            let mut re_b = vec![0.0f64; nf];
+            let mut im_b = vec![0.0f64; nf];
+            for pos in (0..k).chain(n - k..n) {
+                for fi in 0..nf {
+                    re_b[fi] += z_boundary[pos] as f64 * ztab.pos_cos[pos * nf + fi];
+                    im_b[fi] += z_boundary[pos] as f64 * ztab.pos_sin[pos * nf + fi];
+                }
+            }
+            let mut pfb = vec![0.0f64; nf];
+            for fi in 0..nf {
+                let (mut wr, mut wi) = (0.0f64, 0.0f64);
+                for (j, &wv) in w.iter().enumerate() {
+                    wr += wv as f64 * ztab.pos_cos[j * nf + fi];
+                    wi += wv as f64 * ztab.pos_sin[j * nf + fi];
+                }
+                pfb[fi] = (pair_bound - wr * wr - wi * wi).max(0.0);
+            }
+            solver.spectral = Some(radical::SpectralConstraint {
+                num_seq_vars: ztab.middle_len,
+                cos_table: Arc::clone(&ztab.cos_table),
+                sin_table: Arc::clone(&ztab.sin_table),
+                num_freqs: nf,
+                re: re_b.clone(),
+                im: im_b.clone(),
+                re_boundary: re_b,
+                im_boundary: im_b,
+                bound: pair_bound,
+                per_freq_bound: Some(pfb),
+                max_reduction: ztab.max_reduction_total.clone(),
+                amplitudes: Arc::clone(&ztab.amplitudes),
+                assigned: vec![false; ztab.middle_len],
+                values: vec![0i8; ztab.middle_len],
+                seq2: None,
+            });
+        }
+        if qpb_on {
+            sat_z_middle::fill_z_solver_quad_pb(&mut solver, &tmpl, n, m, middle_n, &prep, &w);
+        }
+        if sat_z_middle::check_z_boundary_rule_iv(n, k, &z_boundary) == sat_z_middle::BoundaryRuleState::DeferredToMiddle {
+            let mut nv = (solver.num_vars() + 1) as i32;
+            sat_z_middle::add_rule_iv_middle_clauses(&mut solver, n, k, |jf| (jf - k + 1) as i32, &mut nv);
+        }
+        if solver.spectral.is_some() {
+            let mut pending = Vec::new();
+            for vi in 0..middle_n {
+                if let Some(b) = solver.value((vi + 1) as i32) {
+                    pending.push((vi, if b { 1 } else { -1 }));
+                }
+            }
+            if let Some(ref mut sp) = solver.spectral {
+                for (vi, val) in pending {
+                    if !sp.assigned[vi] {
+                        sp.assign(vi, val);
+                    }
+                }
+            }
+        }
+        let mut rng = seed.wrapping_mul(0x9e3779b97f4a7c15) | 1;
+        let mut found = Vec::new();
+        let mut timed_out = false;
+        loop {
+            let ph: Vec<bool> = (0..middle_n)
+                .map(|_| {
+                    rng ^= rng << 13;
+                    rng ^= rng >> 7;
+                    rng ^= rng << 17;
+                    rng & 1 == 1
+                })
+                .collect();
+            solver.set_phase(&ph);
+            solver.set_conflict_budget(5000);
+            match solver.solve() {
+                Some(true) => {}
+                Some(false) => break,
+                None => {
+                    timed_out = true;
+                    break;
+                }
+            }
+            let mid: Vec<i8> = (0..middle_n)
+                .map(|i| if solver.value((i + 1) as i32) == Some(true) { 1 } else { -1 })
+                .collect();
+            let block: Vec<i32> = (0..middle_n)
+                .map(|i| if mid[i] == 1 { -((i + 1) as i32) } else { (i + 1) as i32 })
+                .collect();
+            found.push(mid);
+            solver.reset();
+            solver.add_clause(block);
+            if found.len() > 100_000 {
+                break;
+            }
+        }
+        (found, timed_out)
+    }
+
+    /// Regression for radical's spectral conflict clause, which was
+    /// attached to the watch lists under the wrong literal polarity. The
+    /// corrupted watches made the Z-middle SAT phase-dependently UNSAT on
+    /// a feasible (Z, W): this catalogue TT(18) row was lost in 136 of 200
+    /// phase seeds, and ~36% of TT(18) went missing from `--all`.
+    #[test]
+    fn z_middle_sat_finds_canonical_tt18_for_every_phase_seed() {
+        let z = "+-++---+++++++-++-";
+        let w = "++----+-+--++--+-";
+        let k = 5;
+        let target: Vec<i8> =
+            z.bytes().map(|b| if b == b'+' { 1 } else { -1 }).collect::<Vec<_>>()[k..z.len() - k].to_vec();
+        let all_counts: Vec<u32> = (0..=8).collect();
+        for &(spec, qpb, counts) in &[
+            (true, true, &[0u32, 6][..]),
+            (true, false, &[0, 6][..]),
+            (true, true, &all_counts[..]),
+            (false, true, &[0, 6][..]),
+        ] {
+            let missed: Vec<u64> = (0..200u64)
+                .filter(|&seed| !z_middle_enumerate(z, w, k, counts, seed, spec, qpb).0.contains(&target))
+                .collect();
+            assert!(
+                missed.is_empty(),
+                "spectral={spec} quad_pb={qpb} counts={counts:?}: canonical Z middle missed for {} of 200 seeds (e.g. {:?})",
+                missed.len(),
+                &missed[..missed.len().min(5)]
+            );
+        }
+    }
 }
